@@ -59,9 +59,10 @@ class MainActivity : AppCompatActivity() {
             if (actionId == EditorInfo.IME_ACTION_SEARCH) { doSearch(); true } else false
         }
 
+        binding.btnLoadMore.setOnClickListener { vm.loadMore() }
+
         binding.btnDownload.setOnClickListener {
-            val track = adapter.getSelected()
-            if (track == null) {
+            val track = adapter.getSelected() ?: run {
                 Toast.makeText(this, "Выберите трек из списка", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
@@ -69,8 +70,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.btnPickFolder.setOnClickListener {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-            dirPicker.launch(intent)
+            dirPicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE))
         }
 
         binding.tabTracks.setOnClickListener { switchTab(false) }
@@ -82,6 +82,8 @@ class MainActivity : AppCompatActivity() {
     private fun switchTab(logs: Boolean) {
         showingLogs = logs
         binding.recycler.isVisible = !logs
+        binding.btnLoadMore.isVisible = !logs && (vm.searchState.value is SearchState.Success &&
+                (vm.searchState.value as SearchState.Success).hasMore)
         binding.scrollLogs.isVisible = logs
         binding.tabTracks.setTextColor(if (!logs) getColor(R.color.accent) else getColor(R.color.text_hint))
         binding.tabLogs.setTextColor(if (logs) getColor(R.color.accent) else getColor(R.color.text_hint))
@@ -93,7 +95,7 @@ class MainActivity : AppCompatActivity() {
         val q = binding.etSearch.text.toString().trim()
         if (q.isEmpty()) return
         hideKeyboard()
-        binding.tvLogs.text = "Запрос: $q\n"
+        binding.tvLogs.text = "Поиск: $q\n"
         vm.search(q)
     }
 
@@ -120,12 +122,18 @@ class MainActivity : AppCompatActivity() {
                     is SearchState.Idle -> {
                         binding.progressSearch.isVisible = false
                         binding.tvStatus.isVisible = false
+                        binding.btnLoadMore.isVisible = false
                     }
                     is SearchState.Loading -> {
                         binding.progressSearch.isVisible = true
                         binding.tvStatus.isVisible = false
                         binding.btnSearch.isEnabled = false
-                        appendLog("Загрузка...")
+                        binding.btnLoadMore.isVisible = false
+                    }
+                    is SearchState.LoadingMore -> {
+                        binding.progressSearch.isVisible = true
+                        binding.btnLoadMore.isEnabled = false
+                        binding.btnLoadMore.text = "Загрузка..."
                     }
                     is SearchState.Success -> {
                         binding.progressSearch.isVisible = false
@@ -134,14 +142,19 @@ class MainActivity : AppCompatActivity() {
                         adapter.submit(state.tracks)
                         binding.tvCount.text = "Найдено: ${state.tracks.size}"
                         binding.tvCount.isVisible = true
-                        appendLog("Найдено треков: ${state.tracks.size}")
-                        state.tracks.take(5).forEach { appendLog("  • ${it.artist} - ${it.title}") }
+                        if (!showingLogs) {
+                            binding.btnLoadMore.isVisible = state.hasMore
+                            binding.btnLoadMore.isEnabled = true
+                            binding.btnLoadMore.text = "Загрузить ещё"
+                        }
+                        appendLog("Всего треков: ${state.tracks.size} | Ещё: ${state.hasMore}")
                     }
                     is SearchState.Error -> {
                         binding.progressSearch.isVisible = false
                         binding.btnSearch.isEnabled = true
                         binding.tvStatus.text = state.message
                         binding.tvStatus.isVisible = true
+                        binding.btnLoadMore.isVisible = false
                         appendLog("ОШИБКА: ${state.message}")
                     }
                 }
@@ -149,17 +162,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            vm.logMessages.collect { msg ->
-                appendLog(msg)
-            }
+            vm.logMessages.collect { msg -> appendLog(msg) }
         }
 
         lifecycleScope.launch {
             vm.downloadState.collect { state ->
                 when (state) {
-                    is DownloadState.Idle -> {
-                        binding.downloadGroup.isVisible = false
-                    }
+                    is DownloadState.Idle -> binding.downloadGroup.isVisible = false
                     is DownloadState.Progress -> {
                         binding.downloadGroup.isVisible = true
                         binding.progressDownload.progress = state.percent
@@ -186,8 +195,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hideKeyboard() {
-        val imm = getSystemService(InputMethodManager::class.java)
-        imm.hideSoftInputFromWindow(binding.etSearch.windowToken, 0)
+        getSystemService(InputMethodManager::class.java)
+            .hideSoftInputFromWindow(binding.etSearch.windowToken, 0)
     }
 
     private fun getPathLabel(uri: Uri): String {

@@ -14,11 +14,16 @@ object HitmotopParser {
         .followRedirects(true)
         .build()
 
-    fun search(query: String): List<Track> = searchWithLogs(query).first
+    fun search(query: String): List<Track> = searchWithLogs(query, 0).first
 
-    fun searchWithLogs(query: String): Pair<List<Track>, List<String>> {
+    fun searchWithLogs(query: String, start: Int = 0): Pair<List<Track>, List<String>> {
         val logs = mutableListOf<String>()
-        val url = "https://rus.hitmotop.com/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}"
+        val url = if (start == 0)
+            "https://rus.hitmotop.com/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}"
+        else
+            "https://rus.hitmotop.com/search/start/$start?q=${java.net.URLEncoder.encode(query, "UTF-8")}"
+
+        logs.add("GET $url")
 
         val request = Request.Builder()
             .url(url)
@@ -32,12 +37,11 @@ object HitmotopParser {
 
         val response = client.newCall(request).execute()
         val html = response.use { resp ->
-            logs.add("HTTP ${resp.code} | Content-Type: ${resp.header("Content-Type")}")
+            logs.add("HTTP ${resp.code}")
             resp.body?.string() ?: ""
         }
 
-        logs.add("Длина ответа: ${html.length} символов")
-
+        logs.add("Длина: ${html.length}")
         val tracks = parseTracks(html, logs)
         return Pair(tracks, logs)
     }
@@ -50,36 +54,24 @@ object HitmotopParser {
 
         val downloads = downloadRegex.findAll(html).map { it.groupValues[1] }.toList()
         val durations = durationRegex.findAll(html).map { it.groupValues[1].trim() }.toList()
+        logs.add("Ссылок: ${downloads.size}")
 
-        logs.add("Download-ссылок: ${downloads.size}")
-
-        // Диагностика — найти data-musmeta в сыром виде
         val rawIdx = html.indexOf("data-musmeta")
         if (rawIdx < 0) {
-            logs.add("data-musmeta НЕ НАЙДЕН в HTML!")
-            logs.add("HTML[0..200]: ${html.take(200)}")
+            logs.add("data-musmeta не найден!")
             return tracks
         }
 
-        val sample = html.substring(rawIdx, minOf(rawIdx + 120, html.length))
-        logs.add("sample: $sample")
-
-        // Определяем разделитель
         val afterAttr = html.substring(rawIdx + "data-musmeta".length)
         val delimiter = when {
             afterAttr.startsWith("=\"") -> "data-musmeta=\""
             afterAttr.startsWith("='")  -> "data-musmeta='"
-            afterAttr.startsWith("=")   -> "data-musmeta="
-            else -> {
-                logs.add("Неизвестный формат после data-musmeta: [${afterAttr.take(10)}]")
-                return tracks
-            }
+            else -> "data-musmeta="
         }
         val closingQuote = if (delimiter.endsWith("\"")) '"' else '\''
-        logs.add("Разделитель: [$delimiter], закрывающий: [$closingQuote]")
 
         val parts = html.split(delimiter)
-        logs.add("Блоков: ${parts.size - 1}")
+        logs.add("Треков на странице: ${parts.size - 1}")
 
         var idx = 0
         for (i in 1 until parts.size) {
@@ -105,12 +97,10 @@ object HitmotopParser {
                     tracks.add(Track(title, artist, downloadUrl, img, duration))
                 }
             } catch (e: Exception) {
-                logs.add("[$i] JSON err: ${e.message?.take(60)}")
                 idx++
             }
         }
 
-        logs.add("Итого треков: ${tracks.size}")
         return tracks
     }
 }
