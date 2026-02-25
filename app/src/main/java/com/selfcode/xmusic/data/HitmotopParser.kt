@@ -37,11 +37,6 @@ object HitmotopParser {
         }
 
         logs.add("Длина ответа: ${html.length} символов")
-        if (html.length < 500) {
-            logs.add("Ответ сервера: $html")
-        } else {
-            logs.add("Начало HTML: ${html.take(300)}")
-        }
 
         val tracks = parseTracks(html, logs)
         return Pair(tracks, logs)
@@ -56,20 +51,41 @@ object HitmotopParser {
         val downloads = downloadRegex.findAll(html).map { it.groupValues[1] }.toList()
         val durations = durationRegex.findAll(html).map { it.groupValues[1].trim() }.toList()
 
-        logs.add("Найдено download-ссылок: ${downloads.size}")
-        logs.add("Найдено длительностей: ${durations.size}")
+        logs.add("Download-ссылок: ${downloads.size}")
 
-        val parts = html.split("""data-musmeta="""")
-        logs.add("Блоков data-musmeta: ${parts.size - 1}")
+        // Диагностика — найти data-musmeta в сыром виде
+        val rawIdx = html.indexOf("data-musmeta")
+        if (rawIdx < 0) {
+            logs.add("data-musmeta НЕ НАЙДЕН в HTML!")
+            logs.add("HTML[0..200]: ${html.take(200)}")
+            return tracks
+        }
+
+        val sample = html.substring(rawIdx, minOf(rawIdx + 120, html.length))
+        logs.add("sample: $sample")
+
+        // Определяем разделитель
+        val afterAttr = html.substring(rawIdx + "data-musmeta".length)
+        val delimiter = when {
+            afterAttr.startsWith("=\"") -> "data-musmeta=\""
+            afterAttr.startsWith("='")  -> "data-musmeta='"
+            afterAttr.startsWith("=")   -> "data-musmeta="
+            else -> {
+                logs.add("Неизвестный формат после data-musmeta: [${afterAttr.take(10)}]")
+                return tracks
+            }
+        }
+        val closingQuote = if (delimiter.endsWith("\"")) '"' else '\''
+        logs.add("Разделитель: [$delimiter], закрывающий: [$closingQuote]")
+
+        val parts = html.split(delimiter)
+        logs.add("Блоков: ${parts.size - 1}")
 
         var idx = 0
         for (i in 1 until parts.size) {
             val part = parts[i]
-            val endIdx = part.indexOf('"')
-            if (endIdx < 0) {
-                logs.add("[$i] Не найден конец атрибута")
-                continue
-            }
+            val endIdx = part.indexOf(closingQuote)
+            if (endIdx < 0) continue
 
             val rawValue = part.substring(0, endIdx)
                 .replace("&quot;", "\"")
@@ -87,11 +103,9 @@ object HitmotopParser {
 
                 if (downloadUrl.isNotEmpty()) {
                     tracks.add(Track(title, artist, downloadUrl, img, duration))
-                } else {
-                    logs.add("[$idx] Нет URL для: $artist - $title")
                 }
             } catch (e: Exception) {
-                logs.add("[$i] JSON ошибка: ${e.message} | raw: ${rawValue.take(80)}")
+                logs.add("[$i] JSON err: ${e.message?.take(60)}")
                 idx++
             }
         }
