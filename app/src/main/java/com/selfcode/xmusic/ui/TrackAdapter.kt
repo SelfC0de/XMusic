@@ -52,7 +52,7 @@ class TrackAdapter(
 
         holder.root.setOnClickListener {
             val prev = selectedPos
-            selectedPos = holder.bindingAdapterPosition
+            selectedPos = holder.adapterPosition
             notifyItemChanged(prev)
             notifyItemChanged(selectedPos)
         }
