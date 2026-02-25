@@ -26,34 +26,48 @@ object HitmotopParser {
     private fun parseTracks(html: String): List<Track> {
         val tracks = mutableListOf<Track>()
 
-        // data-musmeta value contains HTML-encoded JSON: &quot; instead of "
-        // Extract the raw attribute value (between the outer quotes of data-musmeta="...")
-        val metaRegex = Regex("""data-musmeta="([^"]*(?:&quot;[^"]*)*+)"""")
-        val downloadRegex = Regex("""class="track__download-btn"[^>]*href="([^"]+\.mp3)"""")
+        // Extract all <li class="tracks__item ..."> blocks
+        val liRegex = Regex("""<li[^>]+class="tracks__item[^"]*"[^>]*data-musmeta="([^>]*?)"[^>]*>""")
+        // data-musmeta value: everything between data-musmeta=" and the next " that is followed by >
+        // Since &quot; is used inside, the value ends at the first unescaped "
+        // Simple: split by data-musmeta=" and take until next "
+        
+        val downloadRegex = Regex("""href="(https://rus\.hitmotop\.com/get/music/[^"]+\.mp3)"""")
         val durationRegex = Regex("""<div class="track__fulltime">([^<]+)</div>""")
 
-        val metas = metaRegex.findAll(html).map { it.groupValues[1] }.toList()
         val downloads = downloadRegex.findAll(html).map { it.groupValues[1] }.toList()
         val durations = durationRegex.findAll(html).map { it.groupValues[1].trim() }.toList()
 
-        for (i in metas.indices) {
-            try {
-                val rawJson = metas[i]
-                    .replace("&quot;", "\"")
-                    .replace("&amp;", "&")
-                    .replace("\\/", "/")
+        // Split html by "data-musmeta=\"" to extract each meta value
+        val parts = html.split("""data-musmeta="""")
+        // parts[0] = before first, parts[1..n] = starting from the value
 
-                val json = JSONObject(rawJson)
+        var idx = 0
+        for (i in 1 until parts.size) {
+            val part = parts[i]
+            // Find the end of the attribute value: first " not preceded by &quot
+            // The value contains &quot; but not literal "
+            val endIdx = part.indexOf('"')
+            if (endIdx < 0) continue
+
+            val rawValue = part.substring(0, endIdx)
+                .replace("&quot;", "\"")
+                .replace("&amp;", "&")
+                .replace("\\/", "/")
+
+            try {
+                val json = JSONObject(rawValue)
                 val artist = json.optString("artist", "Unknown")
                 val title  = json.optString("title",  "Unknown")
                 val img    = json.optString("img",    "")
-                val downloadUrl = downloads.getOrElse(i) { "" }
-                val duration = durations.getOrElse(i) { "" }
+                val downloadUrl = downloads.getOrElse(idx) { "" }
+                val duration = durations.getOrElse(idx) { "" }
+                idx++
 
                 if (downloadUrl.isNotEmpty()) {
                     tracks.add(Track(title, artist, downloadUrl, img, duration))
                 }
-            } catch (_: Exception) {}
+            } catch (_: Exception) { idx++ }
         }
         return tracks
     }
