@@ -17,6 +17,7 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.selfcode.xmusic.R
 import com.selfcode.xmusic.databinding.ActivityMainBinding
 import kotlinx.coroutines.launch
 
