@@ -26,17 +26,18 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
+
       - name: Download Gradle wrapper jar
         run: |
           mkdir -p gradle/wrapper
           curl -sL "https://github.com/gradle/gradle/raw/v8.7.0/gradle/wrapper/gradle-wrapper.jar" \
             -o gradle/wrapper/gradle-wrapper.jar
-          echo "Wrapper jar size: $(du -sh gradle/wrapper/gradle-wrapper.jar)"
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Create required empty dirs
+      - name: Create required dirs
         run: |
           mkdir -p app/src/main/assets
           mkdir -p app/src/main/jniLibs/arm64-v8a
@@ -44,7 +45,7 @@ jobs:
           mkdir -p app/src/main/jniLibs/x86_64
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
