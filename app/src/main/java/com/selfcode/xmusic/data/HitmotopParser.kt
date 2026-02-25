@@ -8,47 +8,68 @@ import java.util.concurrent.TimeUnit
 object HitmotopParser {
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .followRedirects(true)
         .build()
 
-    fun search(query: String): List<Track> {
+    fun search(query: String): List<Track> = searchWithLogs(query).first
+
+    fun searchWithLogs(query: String): Pair<List<Track>, List<String>> {
+        val logs = mutableListOf<String>()
         val url = "https://rus.hitmotop.com/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}"
+
         val request = Request.Builder()
             .url(url)
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
             .header("Accept-Language", "ru-RU,ru;q=0.9,en;q=0.8")
+            .header("Accept-Encoding", "identity")
+            .header("Connection", "keep-alive")
+            .header("Cache-Control", "max-age=0")
             .build()
-        val html = client.newCall(request).execute().use { it.body?.string() ?: "" }
-        return parseTracks(html)
+
+        val response = client.newCall(request).execute()
+        val html = response.use { resp ->
+            logs.add("HTTP ${resp.code} | Content-Type: ${resp.header("Content-Type")}")
+            resp.body?.string() ?: ""
+        }
+
+        logs.add("Длина ответа: ${html.length} символов")
+        if (html.length < 500) {
+            logs.add("Ответ сервера: $html")
+        } else {
+            logs.add("Начало HTML: ${html.take(300)}")
+        }
+
+        val tracks = parseTracks(html, logs)
+        return Pair(tracks, logs)
     }
 
-    private fun parseTracks(html: String): List<Track> {
+    private fun parseTracks(html: String, logs: MutableList<String>): List<Track> {
         val tracks = mutableListOf<Track>()
 
-        // Extract all <li class="tracks__item ..."> blocks
-        val liRegex = Regex("""<li[^>]+class="tracks__item[^"]*"[^>]*data-musmeta="([^>]*?)"[^>]*>""")
-        // data-musmeta value: everything between data-musmeta=" and the next " that is followed by >
-        // Since &quot; is used inside, the value ends at the first unescaped "
-        // Simple: split by data-musmeta=" and take until next "
-        
         val downloadRegex = Regex("""href="(https://rus\.hitmotop\.com/get/music/[^"]+\.mp3)"""")
         val durationRegex = Regex("""<div class="track__fulltime">([^<]+)</div>""")
 
         val downloads = downloadRegex.findAll(html).map { it.groupValues[1] }.toList()
         val durations = durationRegex.findAll(html).map { it.groupValues[1].trim() }.toList()
 
-        // Split html by "data-musmeta=\"" to extract each meta value
+        logs.add("Найдено download-ссылок: ${downloads.size}")
+        logs.add("Найдено длительностей: ${durations.size}")
+
         val parts = html.split("""data-musmeta="""")
-        // parts[0] = before first, parts[1..n] = starting from the value
+        logs.add("Блоков data-musmeta: ${parts.size - 1}")
 
         var idx = 0
         for (i in 1 until parts.size) {
             val part = parts[i]
-            // Find the end of the attribute value: first " not preceded by &quot
-            // The value contains &quot; but not literal "
             val endIdx = part.indexOf('"')
-            if (endIdx < 0) continue
+            if (endIdx < 0) {
+                logs.add("[$i] Не найден конец атрибута")
+                continue
+            }
 
             val rawValue = part.substring(0, endIdx)
                 .replace("&quot;", "\"")
@@ -66,9 +87,16 @@ object HitmotopParser {
 
                 if (downloadUrl.isNotEmpty()) {
                     tracks.add(Track(title, artist, downloadUrl, img, duration))
+                } else {
+                    logs.add("[$idx] Нет URL для: $artist - $title")
                 }
-            } catch (_: Exception) { idx++ }
+            } catch (e: Exception) {
+                logs.add("[$i] JSON ошибка: ${e.message} | raw: ${rawValue.take(80)}")
+                idx++
+            }
         }
+
+        logs.add("Итого треков: ${tracks.size}")
         return tracks
     }
 }

@@ -15,7 +15,7 @@
         android:background="@color/bg_card"
         android:paddingHorizontal="16dp"
         android:paddingTop="48dp"
-        android:paddingBottom="16dp"
+        android:paddingBottom="12dp"
         android:elevation="4dp">
 
         <TextView
@@ -26,7 +26,7 @@
             android:textStyle="bold"
             android:textColor="@color/accent"
             android:letterSpacing="0.1"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="12dp" />
 
         <!-- Search row -->
         <LinearLayout
@@ -77,6 +77,38 @@
             android:progressTint="@color/accent"
             android:visibility="gone" />
 
+        <!-- Tabs -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:orientation="horizontal"
+            android:layout_marginTop="10dp">
+
+            <TextView
+                android:id="@+id/tabTracks"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="Треки"
+                android:gravity="center"
+                android:textSize="13sp"
+                android:textColor="@color/accent"
+                android:textStyle="bold"
+                android:background="@drawable/bg_tab_selected" />
+
+            <TextView
+                android:id="@+id/tabLogs"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="Логи"
+                android:gravity="center"
+                android:textSize="13sp"
+                android:textColor="@color/text_hint"
+                android:background="@drawable/bg_tab_normal" />
+
+        </LinearLayout>
+
     </LinearLayout>
 
     <!-- Result count -->
@@ -111,6 +143,27 @@
         android:layout_weight="1"
         android:clipToPadding="false"
         android:paddingVertical="4dp" />
+
+    <!-- Logs view -->
+    <ScrollView
+        android:id="@+id/scrollLogs"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone"
+        android:background="@color/bg_dark"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/tvLogs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#A0E0A0"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:text="Логи появятся после поиска..." />
+
+    </ScrollView>
 
     <!-- Bottom panel -->
     <LinearLayout

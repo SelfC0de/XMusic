@@ -12,7 +12,9 @@ import com.selfcode.xmusic.data.HitmotopParser
 import com.selfcode.xmusic.data.Track
 import com.selfcode.xmusic.utils.Downloader
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
@@ -39,17 +41,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _downloadState = MutableStateFlow<DownloadState>(DownloadState.Idle)
     val downloadState = _downloadState.asStateFlow()
 
+    private val _logMessages = MutableSharedFlow<String>(extraBufferCapacity = 100)
+    val logMessages = _logMessages.asSharedFlow()
+
+    private fun log(msg: String) {
+        viewModelScope.launch { _logMessages.emit(msg) }
+    }
+
     fun search(query: String) {
         if (query.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
             _searchState.value = SearchState.Loading
             try {
-                val results = HitmotopParser.search(query)
+                log("URL: https://rus.hitmotop.com/search?q=$query")
+                val (results, logs) = HitmotopParser.searchWithLogs(query)
+                logs.forEach { log(it) }
                 _searchState.value = if (results.isEmpty())
                     SearchState.Error("Ничего не найдено")
                 else
                     SearchState.Success(results)
             } catch (e: Exception) {
+                log("Exception: ${e::class.simpleName}: ${e.message}")
                 _searchState.value = SearchState.Error("Ошибка сети: ${e.message}")
             }
         }

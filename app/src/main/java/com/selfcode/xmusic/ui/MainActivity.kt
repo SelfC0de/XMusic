@@ -26,6 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var vm: MainViewModel
     private lateinit var adapter: TrackAdapter
     private var savePath = ""
+    private var showingLogs = false
 
     private val dirPicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -71,14 +72,33 @@ class MainActivity : AppCompatActivity() {
             dirPicker.launch(intent)
         }
 
+        binding.tabTracks.setOnClickListener { switchTab(false) }
+        binding.tabLogs.setOnClickListener { switchTab(true) }
+
         observeViewModel()
+    }
+
+    private fun switchTab(logs: Boolean) {
+        showingLogs = logs
+        binding.recycler.isVisible = !logs
+        binding.scrollLogs.isVisible = logs
+        binding.tabTracks.setTextColor(if (!logs) getColor(R.color.accent) else getColor(R.color.text_hint))
+        binding.tabLogs.setTextColor(if (logs) getColor(R.color.accent) else getColor(R.color.text_hint))
+        binding.tabTracks.setBackgroundResource(if (!logs) R.drawable.bg_tab_selected else R.drawable.bg_tab_normal)
+        binding.tabLogs.setBackgroundResource(if (logs) R.drawable.bg_tab_selected else R.drawable.bg_tab_normal)
     }
 
     private fun doSearch() {
         val q = binding.etSearch.text.toString().trim()
         if (q.isEmpty()) return
         hideKeyboard()
+        binding.tvLogs.text = "Запрос: $q\n"
         vm.search(q)
+    }
+
+    private fun appendLog(text: String) {
+        binding.tvLogs.append("$text\n")
+        binding.scrollLogs.post { binding.scrollLogs.fullScroll(android.view.View.FOCUS_DOWN) }
     }
 
     private fun checkPermAndDownload(track: com.selfcode.xmusic.data.Track) {
@@ -104,6 +124,7 @@ class MainActivity : AppCompatActivity() {
                         binding.progressSearch.isVisible = true
                         binding.tvStatus.isVisible = false
                         binding.btnSearch.isEnabled = false
+                        appendLog("Загрузка...")
                     }
                     is SearchState.Success -> {
                         binding.progressSearch.isVisible = false
@@ -112,14 +133,23 @@ class MainActivity : AppCompatActivity() {
                         adapter.submit(state.tracks)
                         binding.tvCount.text = "Найдено: ${state.tracks.size}"
                         binding.tvCount.isVisible = true
+                        appendLog("Найдено треков: ${state.tracks.size}")
+                        state.tracks.take(5).forEach { appendLog("  • ${it.artist} - ${it.title}") }
                     }
                     is SearchState.Error -> {
                         binding.progressSearch.isVisible = false
                         binding.btnSearch.isEnabled = true
                         binding.tvStatus.text = state.message
                         binding.tvStatus.isVisible = true
+                        appendLog("ОШИБКА: ${state.message}")
                     }
                 }
+            }
+        }
+
+        lifecycleScope.launch {
+            vm.logMessages.collect { msg ->
+                appendLog(msg)
             }
         }
 
