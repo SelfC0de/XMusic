@@ -4,29 +4,70 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/bg_dark"
-    android:paddingBottom="16dp">
+    android:background="@color/bg_dark">
 
+    <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@color/bg_card"
+        android:background="@drawable/bg_header"
         android:paddingHorizontal="16dp"
-        android:paddingTop="48dp"
-        android:paddingBottom="12dp"
-        android:elevation="4dp">
+        android:paddingTop="44dp"
+        android:paddingBottom="14dp"
+        android:elevation="6dp">
 
-        <TextView
-            android:layout_width="wrap_content"
+        <!-- Logo + Title row -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Self Music"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textColor="@color/accent"
-            android:letterSpacing="0.1"
-            android:layout_marginBottom="12dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="14dp">
 
+            <ImageView
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/selfcode_logo"
+                android:scaleType="fitCenter"
+                android:layout_marginEnd="10dp"/>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Self Music"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:letterSpacing="0.04"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="by SelfCode"
+                    android:textSize="11sp"
+                    android:textColor="#66FFFFFF"/>
+
+            </LinearLayout>
+
+            <!-- About button -->
+            <ImageView
+                android:id="@+id/btnAbout"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@android:drawable/ic_menu_info_details"
+                android:tint="#7C3AFF"
+                android:padding="4dp"/>
+
+        </LinearLayout>
+
+        <!-- Search row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="48dp"
@@ -39,14 +80,14 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:background="@drawable/bg_search"
-                android:paddingHorizontal="14dp"
+                android:paddingHorizontal="16dp"
                 android:hint="Поиск музыки..."
                 android:textColor="@color/text_primary"
                 android:textColorHint="@color/text_hint"
                 android:textSize="15sp"
                 android:imeOptions="actionSearch"
                 android:inputType="text"
-                android:singleLine="true" />
+                android:singleLine="true"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSearch"
@@ -59,85 +100,58 @@
                 app:iconGravity="textStart"
                 app:iconPadding="0dp"
                 android:backgroundTint="@color/accent"
-                app:cornerRadius="12dp"
-                style="@style/Widget.Material3.Button.Icon" />
+                app:cornerRadius="14dp"
+                style="@style/Widget.Material3.Button.Icon"/>
 
         </LinearLayout>
 
+        <!-- Search progress -->
         <ProgressBar
             android:id="@+id/progressSearch"
             android:layout_width="match_parent"
             android:layout_height="3dp"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="10dp"
             style="@style/Widget.AppCompat.ProgressBar.Horizontal"
             android:indeterminate="true"
             android:progressTint="@color/accent"
-            android:visibility="gone" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="36dp"
-            android:orientation="horizontal"
-            android:layout_marginTop="10dp">
-
-            <TextView
-                android:id="@+id/tabTracks"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="Треки"
-                android:gravity="center"
-                android:textSize="13sp"
-                android:textColor="@color/accent"
-                android:textStyle="bold"
-                android:background="@drawable/bg_tab_selected" />
-
-            <TextView
-                android:id="@+id/tabLogs"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="Логи"
-                android:gravity="center"
-                android:textSize="13sp"
-                android:textColor="@color/text_hint"
-                android:background="@drawable/bg_tab_normal" />
-
-        </LinearLayout>
+            android:visibility="gone"/>
 
     </LinearLayout>
 
+    <!-- Count -->
     <TextView
         android:id="@+id/tvCount"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingHorizontal="16dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="4dp"
-        android:textColor="@color/text_hint"
+        android:paddingTop="10dp"
+        android:paddingBottom="2dp"
+        android:textColor="#66FFFFFF"
         android:textSize="12sp"
-        android:visibility="gone" />
+        android:visibility="gone"/>
 
+    <!-- Status -->
     <TextView
         android:id="@+id/tvStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingHorizontal="16dp"
-        android:paddingTop="24dp"
+        android:paddingTop="32dp"
         android:textColor="@color/text_hint"
         android:textSize="14sp"
         android:gravity="center"
-        android:visibility="gone" />
+        android:visibility="gone"/>
 
+    <!-- Track list -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingVertical="4dp" />
+        android:paddingVertical="6dp"/>
 
-    <!-- Load more button -->
+    <!-- Load more -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnLoadMore"
         android:layout_width="match_parent"
@@ -146,43 +160,25 @@
         android:layout_marginVertical="4dp"
         android:text="Загрузить ещё"
         android:textSize="13sp"
-        android:backgroundTint="@color/bg_card"
+        android:backgroundTint="#1E1E30"
         android:textColor="@color/accent"
         app:strokeColor="@color/accent"
         app:strokeWidth="1dp"
-        app:cornerRadius="10dp"
+        app:cornerRadius="12dp"
         android:visibility="gone"
-        style="@style/Widget.Material3.Button.OutlinedButton" />
+        style="@style/Widget.Material3.Button.OutlinedButton"/>
 
-    <ScrollView
-        android:id="@+id/scrollLogs"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:visibility="gone"
-        android:background="@color/bg_dark"
-        android:padding="12dp">
-
-        <TextView
-            android:id="@+id/tvLogs"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textColor="#A0E0A0"
-            android:textSize="11sp"
-            android:fontFamily="monospace"
-            android:text="Логи появятся после поиска..." />
-
-    </ScrollView>
-
+    <!-- Bottom panel -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@color/bg_card"
+        android:background="@drawable/bg_header"
         android:paddingHorizontal="16dp"
         android:paddingVertical="12dp"
-        android:elevation="8dp">
+        android:elevation="10dp">
 
+        <!-- Download progress -->
         <LinearLayout
             android:id="@+id/downloadGroup"
             android:layout_width="match_parent"
@@ -199,7 +195,7 @@
                 android:textSize="12sp"
                 android:maxLines="1"
                 android:ellipsize="end"
-                android:layout_marginBottom="4dp" />
+                android:layout_marginBottom="6dp"/>
 
             <ProgressBar
                 android:id="@+id/progressDownload"
@@ -208,8 +204,7 @@
                 style="@style/Widget.AppCompat.ProgressBar.Horizontal"
                 android:max="100"
                 android:progress="0"
-                android:progressTint="@color/accent"
-                android:progressBackgroundTint="@color/bg_dark" />
+                android:progressDrawable="@drawable/bg_progress_gradient"/>
 
             <TextView
                 android:id="@+id/tvDownloadStatus"
@@ -217,16 +212,17 @@
                 android:layout_height="wrap_content"
                 android:textColor="@color/accent"
                 android:textSize="11sp"
-                android:layout_marginTop="2dp" />
+                android:layout_marginTop="4dp"/>
 
         </LinearLayout>
 
+        <!-- Save path -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="36dp"
+            android:layout_height="32dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="8dp">
+            android:layout_marginBottom="10dp">
 
             <TextView
                 android:id="@+id/tvSavePath"
@@ -234,35 +230,37 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Папка: Загрузки (по умолч.)"
-                android:textColor="@color/text_hint"
+                android:textColor="#55FFFFFF"
                 android:textSize="12sp"
                 android:maxLines="1"
-                android:ellipsize="end" />
+                android:ellipsize="end"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnPickFolder"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
+                android:layout_height="30dp"
                 android:text="Выбрать"
                 android:textSize="11sp"
-                android:paddingHorizontal="12dp"
-                android:backgroundTint="@color/bg_dark"
+                android:paddingHorizontal="10dp"
+                android:backgroundTint="#252540"
                 android:textColor="@color/accent"
-                app:strokeColor="@color/accent"
+                app:strokeColor="#3A3A5C"
                 app:strokeWidth="1dp"
                 app:cornerRadius="8dp"
-                style="@style/Widget.Material3.Button.OutlinedButton" />
+                style="@style/Widget.Material3.Button.OutlinedButton"/>
 
         </LinearLayout>
 
+        <!-- Download button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnDownload"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="50dp"
             android:text="⬇  Скачать выбранный трек"
-            android:textSize="14sp"
+            android:textSize="15sp"
+            android:textStyle="bold"
             android:backgroundTint="@color/accent"
-            app:cornerRadius="12dp" />
+            app:cornerRadius="14dp"/>
 
     </LinearLayout>
 

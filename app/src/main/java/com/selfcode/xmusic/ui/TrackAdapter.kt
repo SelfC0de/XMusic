@@ -1,65 +1,88 @@
 package com.selfcode.xmusic.ui
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.TextView
+import android.view.animation.AnimationUtils
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.selfcode.xmusic.R
 import com.selfcode.xmusic.data.Track
+import com.selfcode.xmusic.databinding.ItemTrackBinding
 
 class TrackAdapter(
-    private val onDownload: (Track) -> Unit
+    private val onDownload: (Track) -> Unit,
+    private val onPlay: (Track) -> Unit
 ) : RecyclerView.Adapter<TrackAdapter.VH>() {
 
-    private var tracks: List<Track> = emptyList()
+    private val items = mutableListOf<Track>()
     private var selectedPos = -1
+    private var playingPos = -1
 
-    fun submit(list: List<Track>) {
-        tracks = list
-        selectedPos = -1
+    inner class VH(val b: ItemTrackBinding) : RecyclerView.ViewHolder(b.root)
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
+        VH(ItemTrackBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+
+    override fun getItemCount() = items.size
+
+    override fun onBindViewHolder(holder: VH, position: Int) {
+        val track = items[position]
+        val b = holder.b
+
+        b.tvTitle.text = track.title
+        b.tvArtist.text = track.artist
+        b.tvDuration.text = track.duration
+
+        Glide.with(b.imgCover)
+            .load(track.coverUrl)
+            .placeholder(R.drawable.ic_music_placeholder)
+            .error(R.drawable.ic_music_placeholder)
+            .centerCrop()
+            .into(b.imgCover)
+
+        b.cardRoot.isSelected = position == selectedPos
+
+        // Play icon state
+        b.btnPlay.setImageResource(
+            if (position == playingPos) R.drawable.ic_pause else R.drawable.ic_play
+        )
+
+        b.cardRoot.setOnClickListener {
+            val prev = selectedPos
+            selectedPos = position
+            if (prev >= 0) notifyItemChanged(prev)
+            notifyItemChanged(position)
+        }
+
+        b.btnPlay.setOnClickListener {
+            val prev = playingPos
+            playingPos = if (playingPos == position) -1 else position
+            if (prev >= 0) notifyItemChanged(prev)
+            notifyItemChanged(position)
+            onPlay(track)
+        }
+
+        b.btnDownloadItem.setOnClickListener {
+            onDownload(track)
+        }
+
+        // Staggered fade-in animation
+        val anim = AnimationUtils.loadAnimation(b.root.context, R.anim.slide_up_fade)
+        anim.startOffset = (position % 10 * 40).toLong()
+        b.root.startAnimation(anim)
+    }
+
+    fun submit(newItems: List<Track>) {
+        items.clear()
+        items.addAll(newItems)
         notifyDataSetChanged()
     }
 
-    fun getSelected(): Track? = tracks.getOrNull(selectedPos)
+    fun getSelected(): Track? = if (selectedPos >= 0) items.getOrNull(selectedPos) else null
 
-    inner class VH(v: View) : RecyclerView.ViewHolder(v) {
-        val cover: ImageView = v.findViewById(R.id.imgCover)
-        val title: TextView = v.findViewById(R.id.tvTitle)
-        val artist: TextView = v.findViewById(R.id.tvArtist)
-        val duration: TextView = v.findViewById(R.id.tvDuration)
-        val root: View = v
-    }
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
-        VH(LayoutInflater.from(parent.context).inflate(R.layout.item_track, parent, false))
-
-    override fun getItemCount() = tracks.size
-
-    override fun onBindViewHolder(holder: VH, position: Int) {
-        val track = tracks[position]
-        holder.title.text = track.title
-        holder.artist.text = track.artist
-        holder.duration.text = track.duration
-        holder.root.isSelected = position == selectedPos
-
-        Glide.with(holder.cover)
-            .load(track.coverUrl)
-            .placeholder(R.drawable.ic_music_placeholder)
-            .into(holder.cover)
-
-        holder.root.setOnClickListener {
-            val prev = selectedPos
-            selectedPos = holder.adapterPosition
-            notifyItemChanged(prev)
-            notifyItemChanged(selectedPos)
-        }
-
-        holder.root.setOnLongClickListener {
-            onDownload(track)
-            true
-        }
+    fun stopPlaying() {
+        val prev = playingPos
+        playingPos = -1
+        if (prev >= 0) notifyItemChanged(prev)
     }
 }
