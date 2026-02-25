@@ -26,19 +26,19 @@ object HitmotopParser {
     private fun parseTracks(html: String): List<Track> {
         val tracks = mutableListOf<Track>()
 
-        // Pattern: data-musmeta="{...}" — contains artist, title, img
-        // data-musmeta value uses HTML entities (&quot; -> "), escaped slashes (\/)
-        val itemRegex = Regex(
-            """data-musmeta="(\{[^"]+\})".*?class="track__download-btn"[^>]*href="([^"]+)"""",
-            setOf(RegexOption.DOT_MATCHES_ALL)
-        )
+        // data-musmeta value contains HTML-encoded JSON: &quot; instead of "
+        // Extract the raw attribute value (between the outer quotes of data-musmeta="...")
+        val metaRegex = Regex("""data-musmeta="([^"]*(?:&quot;[^"]*)*+)"""")
+        val downloadRegex = Regex("""class="track__download-btn"[^>]*href="([^"]+\.mp3)"""")
         val durationRegex = Regex("""<div class="track__fulltime">([^<]+)</div>""")
-        val durations = durationRegex.findAll(html).map { it.groupValues[1].trim() }.toList()
-        var idx = 0
 
-        for (m in itemRegex.findAll(html)) {
+        val metas = metaRegex.findAll(html).map { it.groupValues[1] }.toList()
+        val downloads = downloadRegex.findAll(html).map { it.groupValues[1] }.toList()
+        val durations = durationRegex.findAll(html).map { it.groupValues[1].trim() }.toList()
+
+        for (i in metas.indices) {
             try {
-                val rawJson = m.groupValues[1]
+                val rawJson = metas[i]
                     .replace("&quot;", "\"")
                     .replace("&amp;", "&")
                     .replace("\\/", "/")
@@ -47,16 +47,13 @@ object HitmotopParser {
                 val artist = json.optString("artist", "Unknown")
                 val title  = json.optString("title",  "Unknown")
                 val img    = json.optString("img",    "")
-
-                // Direct download link from href (full mp3, not preview cut)
-                val downloadUrl = m.groupValues[2]
-                val duration = durations.getOrElse(idx) { "" }
-                idx++
+                val downloadUrl = downloads.getOrElse(i) { "" }
+                val duration = durations.getOrElse(i) { "" }
 
                 if (downloadUrl.isNotEmpty()) {
                     tracks.add(Track(title, artist, downloadUrl, img, duration))
                 }
-            } catch (_: Exception) { idx++ }
+            } catch (_: Exception) {}
         }
         return tracks
     }
