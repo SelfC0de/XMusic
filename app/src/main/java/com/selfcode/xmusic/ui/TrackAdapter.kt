@@ -42,7 +42,6 @@ class TrackAdapter(
 
         b.cardRoot.isSelected = position == selectedPos
 
-        // Play icon state
         b.btnPlay.setImageResource(
             if (position == playingPos) R.drawable.ic_pause else R.drawable.ic_play
         )
@@ -55,10 +54,6 @@ class TrackAdapter(
         }
 
         b.btnPlay.setOnClickListener {
-            val prev = playingPos
-            playingPos = if (playingPos == position) -1 else position
-            if (prev >= 0) notifyItemChanged(prev)
-            notifyItemChanged(position)
             onPlay(track)
         }
 
@@ -66,7 +61,6 @@ class TrackAdapter(
             onDownload(track)
         }
 
-        // Staggered fade-in animation
         val anim = AnimationUtils.loadAnimation(b.root.context, R.anim.slide_up_fade)
         anim.startOffset = (position % 10 * 40).toLong()
         b.root.startAnimation(anim)
@@ -75,14 +69,17 @@ class TrackAdapter(
     fun submit(newItems: List<Track>) {
         items.clear()
         items.addAll(newItems)
+        selectedPos = -1
+        playingPos = -1
         notifyDataSetChanged()
     }
 
-    fun getSelected(): Track? = if (selectedPos >= 0) items.getOrNull(selectedPos) else null
-
-    fun stopPlaying() {
+    fun setPlayingIdx(idx: Int, playing: Boolean) {
         val prev = playingPos
-        playingPos = -1
+        playingPos = if (playing) idx else -1
         if (prev >= 0) notifyItemChanged(prev)
+        if (idx >= 0) notifyItemChanged(idx)
     }
+
+    fun getSelected(): Track? = if (selectedPos >= 0) items.getOrNull(selectedPos) else null
 }

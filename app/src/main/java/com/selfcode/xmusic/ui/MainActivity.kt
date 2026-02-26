@@ -23,6 +23,7 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.bumptech.glide.Glide
 import com.selfcode.xmusic.R
 import com.selfcode.xmusic.data.Track
 import com.selfcode.xmusic.databinding.ActivityMainBinding
@@ -36,13 +37,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: TrackAdapter
     private var savePath = ""
     private var mediaPlayer: MediaPlayer? = null
+    private var currentTrackIdx = -1
+    private var allTracks = listOf<Track>()
+    private var isPlaying = false
 
     private val dirPicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let { uri ->
                 contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                 savePath = uri.path ?: ""
-                binding.tvSavePath.text = "Папка: ${getPathLabel(uri)}"
+                binding.tvSavePath.text = "📁 ${getPathLabel(uri)}"
             }
         }
     }
@@ -60,7 +64,10 @@ class MainActivity : AppCompatActivity() {
         vm = ViewModelProvider(this)[MainViewModel::class.java]
         adapter = TrackAdapter(
             onDownload = { track -> checkPermAndDownload(track) },
-            onPlay = { track -> togglePlay(track) }
+            onPlay = { track ->
+                val idx = allTracks.indexOf(track)
+                if (idx >= 0) playTrack(idx)
+            }
         )
 
         binding.recycler.layoutManager = LinearLayoutManager(this)
@@ -71,65 +78,101 @@ class MainActivity : AppCompatActivity() {
             if (actionId == EditorInfo.IME_ACTION_SEARCH) { doSearch(); true } else false
         }
         binding.btnLoadMore.setOnClickListener { vm.loadMore() }
-        binding.btnDownload.setOnClickListener {
-            val track = adapter.getSelected() ?: run {
-                Toast.makeText(this, "Выберите трек", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            checkPermAndDownload(track)
-        }
         binding.btnPickFolder.setOnClickListener {
             dirPicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE))
         }
         binding.btnAbout.setOnClickListener { showAbout() }
 
+        // Mini player controls
+        binding.btnPlayPause.setOnClickListener {
+            if (currentTrackIdx < 0 && allTracks.isNotEmpty()) {
+                playTrack(0)
+            } else if (isPlaying) {
+                pauseTrack()
+            } else {
+                resumeTrack()
+            }
+        }
+        binding.btnPrev.setOnClickListener {
+            if (currentTrackIdx > 0) playTrack(currentTrackIdx - 1)
+        }
+        binding.btnNext.setOnClickListener {
+            if (currentTrackIdx < allTracks.size - 1) playTrack(currentTrackIdx + 1)
+        }
+
         // Entrance animation
         binding.root.alpha = 0f
         ObjectAnimator.ofFloat(binding.root, "alpha", 0f, 1f).apply {
-            duration = 500
-            startDelay = 100
-            start()
+            duration = 500; startDelay = 100; start()
         }
 
         observeViewModel()
     }
 
-    private fun togglePlay(track: Track) {
-        if (mediaPlayer?.isPlaying == true) {
-            mediaPlayer?.stop()
-            mediaPlayer?.release()
-            mediaPlayer = null
-            adapter.stopPlaying()
-            return
-        }
+    private fun playTrack(idx: Int) {
+        if (idx < 0 || idx >= allTracks.size) return
+        currentTrackIdx = idx
+        val track = allTracks[idx]
+
+        updatePlayerUI(track)
+        adapter.setPlayingIdx(idx, true)
+
         mediaPlayer?.release()
         mediaPlayer = MediaPlayer().apply {
             setAudioAttributes(AudioAttributes.Builder()
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .build())
+                .setUsage(AudioAttributes.USAGE_MEDIA).build())
             setDataSource(track.url)
-            setOnPreparedListener { it.start() }
+            setOnPreparedListener {
+                it.start()
+                isPlaying = true
+                binding.btnPlayPause.setImageResource(R.drawable.ic_pause)
+            }
             setOnCompletionListener {
-                adapter.stopPlaying()
-                release()
-                mediaPlayer = null
+                isPlaying = false
+                binding.btnPlayPause.setImageResource(R.drawable.ic_play)
+                adapter.setPlayingIdx(idx, false)
+                // Auto next
+                if (currentTrackIdx < allTracks.size - 1) playTrack(currentTrackIdx + 1)
             }
             setOnErrorListener { _, _, _ ->
                 Toast.makeText(this@MainActivity, "Ошибка воспроизведения", Toast.LENGTH_SHORT).show()
-                adapter.stopPlaying()
+                isPlaying = false
+                binding.btnPlayPause.setImageResource(R.drawable.ic_play)
                 true
             }
             prepareAsync()
         }
     }
 
+    private fun pauseTrack() {
+        mediaPlayer?.pause()
+        isPlaying = false
+        binding.btnPlayPause.setImageResource(R.drawable.ic_play)
+        adapter.setPlayingIdx(currentTrackIdx, false)
+    }
+
+    private fun resumeTrack() {
+        mediaPlayer?.start()
+        isPlaying = true
+        binding.btnPlayPause.setImageResource(R.drawable.ic_pause)
+        adapter.setPlayingIdx(currentTrackIdx, true)
+    }
+
+    private fun updatePlayerUI(track: Track) {
+        binding.playerTitle.text = track.title
+        binding.playerArtist.text = track.artist
+        Glide.with(this).load(track.coverUrl)
+            .placeholder(R.drawable.ic_music_placeholder)
+            .error(R.drawable.ic_music_placeholder)
+            .centerCrop().into(binding.playerCover)
+        binding.btnPlayPause.setImageResource(R.drawable.ic_pause)
+    }
+
     private fun doSearch() {
         val q = binding.etSearch.text.toString().trim()
         if (q.isEmpty()) return
         hideKeyboard()
-        mediaPlayer?.release()
-        mediaPlayer = null
         vm.search(q)
     }
 
@@ -139,7 +182,6 @@ class MainActivity : AppCompatActivity() {
         val db = DialogAboutBinding.inflate(layoutInflater)
         dialog.setContentView(db.root)
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-
         db.linkTelegram.setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/selfcode_dev")))
         }
@@ -183,6 +225,7 @@ class MainActivity : AppCompatActivity() {
                         binding.progressSearch.isVisible = false
                         binding.btnSearch.isEnabled = true
                         binding.tvStatus.isVisible = false
+                        allTracks = state.tracks
                         adapter.submit(state.tracks)
                         binding.tvCount.text = "Найдено: ${state.tracks.size} треков"
                         binding.tvCount.isVisible = true
@@ -208,26 +251,26 @@ class MainActivity : AppCompatActivity() {
                 when (state) {
                     is DownloadState.Idle -> {
                         binding.downloadGroup.isVisible = false
+                        binding.dividerDownload.isVisible = false
                     }
                     is DownloadState.Progress -> {
                         binding.downloadGroup.isVisible = true
+                        binding.dividerDownload.isVisible = true
                         binding.progressDownload.progress = state.percent
-                        binding.tvDownloadStatus.text = "Загрузка: ${state.percent}%"
+                        binding.tvDownloadStatus.text = "${state.percent}%"
                         binding.tvFileName.text = state.fileName
-                        binding.btnDownload.isEnabled = false
                     }
                     is DownloadState.Done -> {
                         binding.progressDownload.progress = 100
-                        binding.tvDownloadStatus.text = "✓ Сохранено"
+                        binding.tvDownloadStatus.text = "✓"
                         binding.tvFileName.text = state.fileName
-                        binding.btnDownload.isEnabled = true
                         Toast.makeText(this@MainActivity, "✓ ${state.fileName}", Toast.LENGTH_LONG).show()
                         kotlinx.coroutines.delay(2000)
                         vm.resetDownload()
                     }
                     is DownloadState.Error -> {
-                        binding.tvDownloadStatus.text = "Ошибка: ${state.message}"
-                        binding.btnDownload.isEnabled = true
+                        binding.tvDownloadStatus.text = "✗"
+                        binding.tvFileName.text = state.message
                     }
                 }
             }
@@ -246,7 +289,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getPathLabel(uri: Uri): String {
-        val path = uri.lastPathSegment ?: return uri.toString()
-        return path.replace("primary:", "").replace(":", "/")
+        val path = uri.lastPathSegment ?: return "Папка выбрана"
+        return path.replace("primary:", "").replace(":", "/").take(25)
     }
 }

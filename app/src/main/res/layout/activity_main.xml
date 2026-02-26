@@ -17,7 +17,6 @@
         android:paddingBottom="14dp"
         android:elevation="6dp">
 
-        <!-- Logo + Title row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -26,8 +25,8 @@
             android:layout_marginBottom="14dp">
 
             <ImageView
-                android:layout_width="36dp"
-                android:layout_height="36dp"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
                 android:src="@drawable/selfcode_logo"
                 android:scaleType="fitCenter"
                 android:layout_marginEnd="10dp"/>
@@ -37,7 +36,6 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical">
-
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -46,17 +44,14 @@
                     android:textStyle="bold"
                     android:textColor="#FFFFFF"
                     android:letterSpacing="0.04"/>
-
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="by SelfCode"
                     android:textSize="11sp"
-                    android:textColor="#66FFFFFF"/>
-
+                    android:textColor="#7C3AFF"/>
             </LinearLayout>
 
-            <!-- About button -->
             <ImageView
                 android:id="@+id/btnAbout"
                 android:layout_width="32dp"
@@ -105,7 +100,6 @@
 
         </LinearLayout>
 
-        <!-- Search progress -->
         <ProgressBar
             android:id="@+id/progressSearch"
             android:layout_width="match_parent"
@@ -124,9 +118,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingHorizontal="16dp"
-        android:paddingTop="10dp"
+        android:paddingTop="8dp"
         android:paddingBottom="2dp"
-        android:textColor="#66FFFFFF"
+        android:textColor="#55FFFFFF"
         android:textSize="12sp"
         android:visibility="gone"/>
 
@@ -149,15 +143,15 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingVertical="6dp"/>
+        android:paddingVertical="4dp"/>
 
     <!-- Load more -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnLoadMore"
         android:layout_width="match_parent"
-        android:layout_height="40dp"
+        android:layout_height="38dp"
         android:layout_marginHorizontal="16dp"
-        android:layout_marginVertical="4dp"
+        android:layout_marginBottom="4dp"
         android:text="Загрузить ещё"
         android:textSize="13sp"
         android:backgroundTint="#1E1E30"
@@ -168,99 +162,198 @@
         android:visibility="gone"
         style="@style/Widget.Material3.Button.OutlinedButton"/>
 
-    <!-- Bottom panel -->
+    <!-- ===== MINI PLAYER ===== -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@drawable/bg_header"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="12dp"
-        android:elevation="10dp">
+        android:background="@drawable/bg_mini_player"
+        android:elevation="12dp">
 
-        <!-- Download progress -->
+        <!-- Download progress (compact) -->
         <LinearLayout
             android:id="@+id/downloadGroup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone"
-            android:layout_marginBottom="10dp">
-
-            <TextView
-                android:id="@+id/tvFileName"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@color/text_primary"
-                android:textSize="12sp"
-                android:maxLines="1"
-                android:ellipsize="end"
-                android:layout_marginBottom="6dp"/>
-
-            <ProgressBar
-                android:id="@+id/progressDownload"
-                android:layout_width="match_parent"
-                android:layout_height="8dp"
-                style="@style/Widget.AppCompat.ProgressBar.Horizontal"
-                android:max="100"
-                android:progress="0"
-                android:progressDrawable="@drawable/bg_progress_gradient"/>
-
-            <TextView
-                android:id="@+id/tvDownloadStatus"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@color/accent"
-                android:textSize="11sp"
-                android:layout_marginTop="4dp"/>
-
-        </LinearLayout>
-
-        <!-- Save path -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="32dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="10dp">
+            android:paddingHorizontal="16dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="4dp"
+            android:visibility="gone">
 
-            <TextView
-                android:id="@+id/tvSavePath"
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_download"
+                android:layout_marginEnd="8dp"/>
+
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Папка: Загрузки (по умолч.)"
-                android:textColor="#55FFFFFF"
-                android:textSize="12sp"
-                android:maxLines="1"
-                android:ellipsize="end"/>
+                android:orientation="vertical">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnPickFolder"
+                <TextView
+                    android:id="@+id/tvFileName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_primary"
+                    android:textSize="11sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"/>
+
+                <ProgressBar
+                    android:id="@+id/progressDownload"
+                    android:layout_width="match_parent"
+                    android:layout_height="5dp"
+                    android:layout_marginTop="3dp"
+                    style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                    android:max="100"
+                    android:progressDrawable="@drawable/bg_progress_gradient"/>
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvDownloadStatus"
                 android:layout_width="wrap_content"
-                android:layout_height="30dp"
-                android:text="Выбрать"
-                android:textSize="11sp"
-                android:paddingHorizontal="10dp"
-                android:backgroundTint="#252540"
+                android:layout_height="wrap_content"
                 android:textColor="@color/accent"
-                app:strokeColor="#3A3A5C"
-                app:strokeWidth="1dp"
-                app:cornerRadius="8dp"
-                style="@style/Widget.Material3.Button.OutlinedButton"/>
+                android:textSize="11sp"
+                android:layout_marginStart="8dp"/>
 
         </LinearLayout>
 
-        <!-- Download button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnDownload"
+        <!-- Thin divider if download shown -->
+        <View
+            android:id="@+id/dividerDownload"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:text="⬇  Скачать выбранный трек"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:backgroundTint="@color/accent"
-            app:cornerRadius="14dp"/>
+            android:layout_height="1dp"
+            android:background="#15FFFFFF"
+            android:visibility="gone"/>
+
+        <!-- Player row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="14dp">
+
+            <!-- Track cover -->
+            <ImageView
+                android:id="@+id/playerCover"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_cover"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_music_placeholder"
+                android:layout_marginEnd="12dp"/>
+
+            <!-- Track info -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/playerTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Выберите трек"
+                    android:textColor="#F0F0FF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end"/>
+
+                <TextView
+                    android:id="@+id/playerArtist"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textColor="#66FFFFFF"
+                    android:textSize="11sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:layout_marginTop="2dp"/>
+
+                <!-- Save path row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="3dp">
+
+                    <TextView
+                        android:id="@+id/tvSavePath"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="📁 Загрузки (по умолч.)"
+                        android:textColor="#44FFFFFF"
+                        android:textSize="10sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"/>
+
+                    <TextView
+                        android:id="@+id/btnPickFolder"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="изменить"
+                        android:textColor="#7C3AFF"
+                        android:textSize="10sp"
+                        android:paddingStart="6dp"/>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Controls -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginStart="8dp">
+
+                <!-- Prev -->
+                <ImageView
+                    android:id="@+id/btnPrev"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@drawable/ic_prev"
+                    android:background="@drawable/bg_player_btn_outline"
+                    android:padding="9dp"
+                    android:scaleType="fitCenter"
+                    android:layout_marginEnd="8dp"/>
+
+                <!-- Play/Pause -->
+                <ImageView
+                    android:id="@+id/btnPlayPause"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:src="@drawable/ic_play"
+                    android:background="@drawable/bg_player_btn"
+                    android:padding="11dp"
+                    android:scaleType="fitCenter"
+                    android:layout_marginEnd="8dp"/>
+
+                <!-- Next -->
+                <ImageView
+                    android:id="@+id/btnNext"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@drawable/ic_next"
+                    android:background="@drawable/bg_player_btn_outline"
+                    android:padding="9dp"
+                    android:scaleType="fitCenter"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
 
     </LinearLayout>
 
