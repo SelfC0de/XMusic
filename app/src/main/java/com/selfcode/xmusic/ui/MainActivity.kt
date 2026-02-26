@@ -16,7 +16,7 @@ import android.view.animation.AnimationUtils
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
-import androidx.this@MainActivity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
@@ -109,11 +109,9 @@ class MainActivity : AppCompatActivity() {
         if (idx < 0 || idx >= allTracks.size) return
         currentTrackIdx = idx
         val track = allTracks[idx]
-
         updatePlayerUI(track)
         adapter.setPlayingIdx(idx, true)
 
-        
         mediaPlayer?.release()
         mediaPlayer = MediaPlayer()
         mediaPlayer?.setAudioAttributes(
@@ -125,21 +123,19 @@ class MainActivity : AppCompatActivity() {
         mediaPlayer?.setDataSource(track.url)
         mediaPlayer?.setOnPreparedListener { mp ->
             mp.start()
-            this@MainActivity.isPlaying = true
-            this@MainActivity.binding.btnPlayPause.setImageResource(R.drawable.ic_pause)
+            isPlaying = true
+            binding.btnPlayPause.setImageResource(R.drawable.ic_pause)
         }
         mediaPlayer?.setOnCompletionListener {
-            this@MainActivity.isPlaying = false
-            this@MainActivity.binding.btnPlayPause.setImageResource(R.drawable.ic_play)
+            isPlaying = false
+            binding.btnPlayPause.setImageResource(R.drawable.ic_play)
             adapter.setPlayingIdx(idx, false)
-            if (this@MainActivity.currentTrackIdx < this@MainActivity.allTracks.size - 1) {
-                this@MainActivity.playTrack(this@MainActivity.currentTrackIdx + 1)
-            }
+            if (currentTrackIdx < allTracks.size - 1) playTrack(currentTrackIdx + 1)
         }
         mediaPlayer?.setOnErrorListener { _, _, _ ->
             Toast.makeText(this@MainActivity, "Ошибка воспроизведения", Toast.LENGTH_SHORT).show()
-            this@MainActivity.isPlaying = false
-            this@MainActivity.binding.btnPlayPause.setImageResource(R.drawable.ic_play)
+            isPlaying = false
+            binding.btnPlayPause.setImageResource(R.drawable.ic_play)
             true
         }
         mediaPlayer?.prepareAsync()
