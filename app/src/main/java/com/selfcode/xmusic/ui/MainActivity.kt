@@ -16,7 +16,7 @@ import android.view.animation.AnimationUtils
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.this@MainActivity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
@@ -35,11 +35,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var vm: MainViewModel
     private lateinit var adapter: TrackAdapter
-    private var savePath = ""
+    private var savePath: String = ""
     private var mediaPlayer: MediaPlayer? = null
-    private var currentTrackIdx = -1
-    private var allTracks = listOf<Track>()
-    private var isPlaying = false
+    private var currentTrackIdx: Int = -1
+    private var allTracks: List<Track> = listOf()
+    private var isPlaying: Boolean = false
 
     private val dirPicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -83,14 +83,11 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnAbout.setOnClickListener { showAbout() }
 
-        // Mini player controls
         binding.btnPlayPause.setOnClickListener {
-            if (currentTrackIdx < 0 && allTracks.isNotEmpty()) {
-                playTrack(0)
-            } else if (isPlaying) {
-                pauseTrack()
-            } else {
-                resumeTrack()
+            when {
+                currentTrackIdx < 0 && allTracks.isNotEmpty() -> playTrack(0)
+                isPlaying -> pauseTrack()
+                else -> resumeTrack()
             }
         }
         binding.btnPrev.setOnClickListener {
@@ -100,7 +97,6 @@ class MainActivity : AppCompatActivity() {
             if (currentTrackIdx < allTracks.size - 1) playTrack(currentTrackIdx + 1)
         }
 
-        // Entrance animation
         binding.root.alpha = 0f
         ObjectAnimator.ofFloat(binding.root, "alpha", 0f, 1f).apply {
             duration = 500; startDelay = 100; start()
@@ -117,32 +113,36 @@ class MainActivity : AppCompatActivity() {
         updatePlayerUI(track)
         adapter.setPlayingIdx(idx, true)
 
+        
         mediaPlayer?.release()
-        mediaPlayer = MediaPlayer().apply {
-            setAudioAttributes(AudioAttributes.Builder()
+        mediaPlayer = MediaPlayer()
+        mediaPlayer?.setAudioAttributes(
+            AudioAttributes.Builder()
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .setUsage(AudioAttributes.USAGE_MEDIA).build())
-            setDataSource(track.url)
-            setOnPreparedListener {
-                it.start()
-                isPlaying = true
-                binding.btnPlayPause.setImageResource(R.drawable.ic_pause)
-            }
-            setOnCompletionListener {
-                isPlaying = false
-                binding.btnPlayPause.setImageResource(R.drawable.ic_play)
-                adapter.setPlayingIdx(idx, false)
-                // Auto next
-                if (currentTrackIdx < allTracks.size - 1) playTrack(currentTrackIdx + 1)
-            }
-            setOnErrorListener { _, _, _ ->
-                Toast.makeText(this@MainActivity, "Ошибка воспроизведения", Toast.LENGTH_SHORT).show()
-                isPlaying = false
-                binding.btnPlayPause.setImageResource(R.drawable.ic_play)
-                true
-            }
-            prepareAsync()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .build()
+        )
+        mediaPlayer?.setDataSource(track.url)
+        mediaPlayer?.setOnPreparedListener { mp ->
+            mp.start()
+            this@MainActivity.isPlaying = true
+            this@MainActivity.binding.btnPlayPause.setImageResource(R.drawable.ic_pause)
         }
+        mediaPlayer?.setOnCompletionListener {
+            this@MainActivity.isPlaying = false
+            this@MainActivity.binding.btnPlayPause.setImageResource(R.drawable.ic_play)
+            adapter.setPlayingIdx(idx, false)
+            if (this@MainActivity.currentTrackIdx < this@MainActivity.allTracks.size - 1) {
+                this@MainActivity.playTrack(this@MainActivity.currentTrackIdx + 1)
+            }
+        }
+        mediaPlayer?.setOnErrorListener { _, _, _ ->
+            Toast.makeText(this@MainActivity, "Ошибка воспроизведения", Toast.LENGTH_SHORT).show()
+            this@MainActivity.isPlaying = false
+            this@MainActivity.binding.btnPlayPause.setImageResource(R.drawable.ic_play)
+            true
+        }
+        mediaPlayer?.prepareAsync()
     }
 
     private fun pauseTrack() {
