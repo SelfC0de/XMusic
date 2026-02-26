@@ -1,2 +1,0 @@
--keep class com.selfcode.xmusic.data.** { *; }
--dontwarn okhttp3.**
