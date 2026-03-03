@@ -122,6 +122,7 @@ class MainActivity : AppCompatActivity() {
 
         setupBottomSheet()
         setupTabs()
+        binding.tabSearch.isSelected = true
         setupSeekBar()
 
         binding.btnSearch.setOnClickListener { doSearch() }
