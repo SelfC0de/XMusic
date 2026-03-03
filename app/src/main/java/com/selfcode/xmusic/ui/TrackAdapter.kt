@@ -3,11 +3,13 @@ package com.selfcode.xmusic.ui
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.view.animation.AnimationUtils
+import android.view.animation.OvershootInterpolator
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.selfcode.xmusic.R
 import com.selfcode.xmusic.data.Track
 import com.selfcode.xmusic.databinding.ItemTrackBinding
+import com.selfcode.xmusic.ui.views.BounceEffect
 
 class TrackAdapter(
     private val onDownload: (Track) -> Unit,
@@ -42,9 +44,18 @@ class TrackAdapter(
 
         b.cardRoot.isSelected = position == selectedPos
 
+        val isCurrentPlaying = position == playingPos
         b.btnPlay.setImageResource(
-            if (position == playingPos) R.drawable.ic_pause else R.drawable.ic_play
+            if (isCurrentPlaying) R.drawable.ic_pause else R.drawable.ic_play
         )
+
+        if (isCurrentPlaying) {
+            b.cardRoot.alpha = 1f
+            b.tvTitle.setTextColor(0xFF7C3AFF.toInt())
+        } else {
+            b.cardRoot.alpha = 0.9f
+            b.tvTitle.setTextColor(0xFFF0F0FF.toInt())
+        }
 
         b.cardRoot.setOnClickListener {
             val prev = selectedPos
@@ -52,6 +63,8 @@ class TrackAdapter(
             if (prev >= 0) notifyItemChanged(prev)
             notifyItemChanged(position)
         }
+
+        BounceEffect.apply(b.btnPlay, b.btnDownloadItem)
 
         b.btnPlay.setOnClickListener {
             onPlay(track)
@@ -61,9 +74,15 @@ class TrackAdapter(
             onDownload(track)
         }
 
-        val anim = AnimationUtils.loadAnimation(b.root.context, R.anim.slide_up_fade)
-        anim.startOffset = (position % 10 * 40).toLong()
-        b.root.startAnimation(anim)
+        b.root.alpha = 0f
+        b.root.translationY = 30f
+        b.root.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(350)
+            .setStartDelay((position % 15 * 30).toLong())
+            .setInterpolator(OvershootInterpolator(0.8f))
+            .start()
     }
 
     fun submit(newItems: List<Track>) {

@@ -1,15 +1,21 @@
 package com.selfcode.xmusic.ui
 
 import android.Manifest
+import android.animation.ArgbEvaluator
 import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.app.Dialog
 import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.Cursor
+import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.media.audiofx.AudioEffect
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -18,7 +24,9 @@ import android.os.Looper
 import android.provider.MediaStore
 import android.view.View
 import android.view.Window
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AnimationUtils
+import android.view.animation.OvershootInterpolator
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.SeekBar
@@ -30,13 +38,18 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.palette.graphics.Palette
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
+import com.bumptech.glide.request.target.CustomTarget
+import com.bumptech.glide.request.transition.Transition
+import com.facebook.shimmer.ShimmerFrameLayout
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.selfcode.xmusic.R
 import com.selfcode.xmusic.data.Track
 import com.selfcode.xmusic.databinding.ActivityMainBinding
 import com.selfcode.xmusic.databinding.DialogAboutBinding
+import com.selfcode.xmusic.ui.views.BounceEffect
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -54,6 +67,7 @@ class MainActivity : AppCompatActivity() {
     private var isPlaying: Boolean = false
     private var isSearchTab: Boolean = true
     private var playingDownloadedPath: String? = null
+    private var currentDominantColor: Int = 0xFF7C3AFF.toInt()
 
     private val handler = Handler(Looper.getMainLooper())
     private var userSeeking = false
@@ -62,15 +76,17 @@ class MainActivity : AppCompatActivity() {
         override fun run() {
             if (!userSeeking) {
                 mediaPlayer?.let { mp ->
-                    if (mp.isPlaying || isPlaying) {
-                        val pos = mp.currentPosition
-                        val dur = mp.duration
-                        if (dur > 0) {
-                            binding.seekBar.progress = (pos.toLong() * 1000 / dur).toInt()
-                            binding.tvCurrentTime.text = formatTime(pos)
-                            binding.tvTotalTime.text = formatTime(dur)
+                    try {
+                        if (mp.isPlaying || isPlaying) {
+                            val pos = mp.currentPosition
+                            val dur = mp.duration
+                            if (dur > 0) {
+                                binding.seekBar.progress = (pos.toLong() * 1000 / dur).toInt()
+                                binding.tvCurrentTime.text = formatTime(pos)
+                                binding.tvTotalTime.text = formatTime(dur)
+                            }
                         }
-                    }
+                    } catch (_: Exception) {}
                 }
             }
             handler.postDelayed(this, 300)
@@ -124,6 +140,7 @@ class MainActivity : AppCompatActivity() {
         setupTabs()
         binding.tabSearch.isSelected = true
         setupSeekBar()
+        setupBounceEffects()
 
         binding.btnSearch.setOnClickListener { doSearch() }
         binding.etSearch.setOnEditorActionListener { _, actionId, _ ->
@@ -140,11 +157,21 @@ class MainActivity : AppCompatActivity() {
 
         binding.root.alpha = 0f
         ObjectAnimator.ofFloat(binding.root, "alpha", 0f, 1f).apply {
-            duration = 500; startDelay = 100; start()
+            duration = 600; startDelay = 100
+            interpolator = AccelerateDecelerateInterpolator()
+            start()
         }
 
         observeViewModel()
         handler.post(seekRunnable)
+    }
+
+    private fun setupBounceEffects() {
+        BounceEffect.apply(
+            binding.btnPlayPause, binding.btnPrev, binding.btnNext,
+            binding.btnPlayPauseExpanded, binding.btnPrevExpanded, binding.btnNextExpanded,
+            binding.btnSearch, binding.tabSearch, binding.tabDownloaded
+        )
     }
 
     private fun setupPlayerButtons(playPause: View, prev: View, next: View) {
@@ -219,8 +246,7 @@ class MainActivity : AppCompatActivity() {
         binding.recyclerDownloaded.isVisible = !search
         binding.tvCount.isVisible = search && allTracks.isNotEmpty()
         binding.btnLoadMore.isVisible = search && binding.btnLoadMore.tag == true
-        binding.etSearch.isVisible = search
-        binding.btnSearch.isVisible = search
+        binding.searchRow.isVisible = search
 
         if (!search) {
             binding.tvEmptyDownloads.isVisible = false
@@ -325,21 +351,39 @@ class MainActivity : AppCompatActivity() {
             mp.start()
             isPlaying = true
             updatePlayPauseIcons(R.drawable.ic_pause)
+            binding.visualizer.startAnimation()
+            openEqualizer(mp.audioSessionId)
         }
         mediaPlayer?.setOnCompletionListener {
             isPlaying = false
             updatePlayPauseIcons(R.drawable.ic_play)
             downloadedAdapter.setPlayingPath(null)
             playingDownloadedPath = null
+            binding.visualizer.stopAnimation()
         }
         mediaPlayer?.setOnErrorListener { _, _, _ ->
             Toast.makeText(this, "Ошибка воспроизведения", Toast.LENGTH_SHORT).show()
             isPlaying = false
             updatePlayPauseIcons(R.drawable.ic_play)
+            binding.visualizer.stopAnimation()
             true
         }
         mediaPlayer?.prepareAsync()
     }
+
+    private fun openEqualizer(sessionId: Int) {
+        try {
+            val intent = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
+            intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, sessionId)
+            intent.putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
+            intent.putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
+            if (intent.resolveActivity(packageManager) != null) {
+                eqSessionId = sessionId
+            }
+        } catch (_: Exception) {}
+    }
+
+    private var eqSessionId: Int = 0
 
     private fun confirmDeleteTrack(track: DownloadedTrack) {
         AlertDialog.Builder(this, R.style.Theme_XMusic_Dialog)
@@ -366,6 +410,7 @@ class MainActivity : AppCompatActivity() {
             isPlaying = false
             playingDownloadedPath = null
             updatePlayPauseIcons(R.drawable.ic_play)
+            binding.visualizer.stopAnimation()
         }
         loadDownloadedTracks()
     }
@@ -424,11 +469,14 @@ class MainActivity : AppCompatActivity() {
             mp.start()
             this@MainActivity.isPlaying = true
             updatePlayPauseIcons(R.drawable.ic_pause)
+            binding.visualizer.startAnimation()
+            openEqualizer(mp.audioSessionId)
         }
         mediaPlayer?.setOnCompletionListener {
             this@MainActivity.isPlaying = false
             updatePlayPauseIcons(R.drawable.ic_play)
             adapter.setPlayingIdx(idx, false)
+            binding.visualizer.stopAnimation()
             if (this@MainActivity.currentTrackIdx < this@MainActivity.allTracks.size - 1) {
                 this@MainActivity.playTrack(this@MainActivity.currentTrackIdx + 1)
             }
@@ -437,6 +485,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this@MainActivity, "Ошибка воспроизведения", Toast.LENGTH_SHORT).show()
             this@MainActivity.isPlaying = false
             updatePlayPauseIcons(R.drawable.ic_play)
+            binding.visualizer.stopAnimation()
             true
         }
         mediaPlayer?.prepareAsync()
@@ -447,6 +496,7 @@ class MainActivity : AppCompatActivity() {
         isPlaying = false
         updatePlayPauseIcons(R.drawable.ic_play)
         if (currentTrackIdx >= 0) adapter.setPlayingIdx(currentTrackIdx, false)
+        binding.visualizer.stopAnimation()
     }
 
     private fun resumeTrack() {
@@ -454,6 +504,7 @@ class MainActivity : AppCompatActivity() {
         isPlaying = true
         updatePlayPauseIcons(R.drawable.ic_pause)
         if (currentTrackIdx >= 0) adapter.setPlayingIdx(currentTrackIdx, true)
+        binding.visualizer.startAnimation()
     }
 
     private fun updatePlayPauseIcons(resId: Int) {
@@ -477,14 +528,94 @@ class MainActivity : AppCompatActivity() {
                 .placeholder(R.drawable.ic_music_placeholder)
                 .error(R.drawable.ic_music_placeholder)
                 .centerCrop().into(binding.expandedCover)
+
+            Glide.with(this).asBitmap().load(coverUrl)
+                .into(object : CustomTarget<Bitmap>() {
+                    override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
+                        extractAndApplyColors(resource)
+                    }
+                    override fun onLoadCleared(placeholder: Drawable?) {}
+                })
         } else {
             binding.playerCover.setImageResource(R.drawable.ic_music_placeholder)
             binding.expandedCover.setImageResource(R.drawable.ic_music_placeholder)
+            applyGradientColors(0xFF7C3AFF.toInt(), 0xFFC850C0.toInt())
         }
+
+        animateCoverAppear()
 
         binding.seekBar.progress = 0
         binding.tvCurrentTime.text = "0:00"
         binding.tvTotalTime.text = "0:00"
+    }
+
+    private fun extractAndApplyColors(bitmap: Bitmap) {
+        Palette.from(bitmap).generate { palette ->
+            val dominant = palette?.getDominantColor(0xFF7C3AFF.toInt()) ?: 0xFF7C3AFF.toInt()
+            val vibrant = palette?.getVibrantColor(0xFFC850C0.toInt()) ?: 0xFFC850C0.toInt()
+            applyGradientColors(dominant, vibrant)
+        }
+    }
+
+    private fun applyGradientColors(colorStart: Int, colorEnd: Int) {
+        val oldColor = currentDominantColor
+        currentDominantColor = colorStart
+
+        val gradient = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(colorStart, adjustAlpha(colorEnd, 0.5f), 0x00000000)
+        )
+        binding.gradientOverlay.background = gradient
+
+        binding.visualizer.setColors(colorStart, colorEnd)
+
+        val colorAnim = ValueAnimator.ofObject(ArgbEvaluator(), oldColor, colorStart)
+        colorAnim.duration = 800
+        colorAnim.addUpdateListener { animator ->
+            val color = animator.animatedValue as Int
+            binding.bottomSheetPlayer.background = GradientDrawable(
+                GradientDrawable.Orientation.BOTTOM_TOP,
+                intArrayOf(adjustAlpha(color, 0.15f), 0xFF0D0D1A.toInt())
+            ).apply {
+                cornerRadii = floatArrayOf(24f.dp, 24f.dp, 24f.dp, 24f.dp, 0f, 0f, 0f, 0f)
+            }
+        }
+        colorAnim.start()
+    }
+
+    private fun animateCoverAppear() {
+        binding.expandedCover.scaleX = 0.8f
+        binding.expandedCover.scaleY = 0.8f
+        binding.expandedCover.animate()
+            .scaleX(1f).scaleY(1f)
+            .setDuration(400)
+            .setInterpolator(OvershootInterpolator(1.5f))
+            .start()
+    }
+
+    private fun adjustAlpha(color: Int, factor: Float): Int {
+        val alpha = (255 * factor).toInt()
+        return (color and 0x00FFFFFF) or (alpha shl 24)
+    }
+
+    private val Float.dp: Float get() = this * resources.displayMetrics.density
+
+    private fun showShimmer() {
+        val shimmer = binding.root.findViewById<ShimmerFrameLayout>(R.id.shimmerLayout)
+        shimmer?.let {
+            it.visibility = View.VISIBLE
+            it.startShimmer()
+        }
+        binding.recycler.visibility = View.GONE
+    }
+
+    private fun hideShimmer() {
+        val shimmer = binding.root.findViewById<ShimmerFrameLayout>(R.id.shimmerLayout)
+        shimmer?.let {
+            it.stopShimmer()
+            it.visibility = View.GONE
+        }
+        binding.recycler.visibility = View.VISIBLE
     }
 
     private fun doSearch() {
@@ -528,12 +659,14 @@ class MainActivity : AppCompatActivity() {
                     is SearchState.Idle -> {
                         binding.progressSearch.isVisible = false
                         binding.btnLoadMore.isVisible = false
+                        hideShimmer()
                     }
                     is SearchState.Loading -> {
                         binding.progressSearch.isVisible = true
                         binding.btnSearch.isEnabled = false
                         binding.btnLoadMore.isVisible = false
                         binding.tvStatus.isVisible = false
+                        showShimmer()
                     }
                     is SearchState.LoadingMore -> {
                         binding.progressSearch.isVisible = true
@@ -544,6 +677,7 @@ class MainActivity : AppCompatActivity() {
                         binding.progressSearch.isVisible = false
                         binding.btnSearch.isEnabled = true
                         binding.tvStatus.isVisible = false
+                        hideShimmer()
                         allTracks = state.tracks
                         adapter.submit(state.tracks)
                         binding.tvCount.text = "Найдено: ${state.tracks.size} треков"
@@ -557,6 +691,7 @@ class MainActivity : AppCompatActivity() {
                     is SearchState.Error -> {
                         binding.progressSearch.isVisible = false
                         binding.btnSearch.isEnabled = true
+                        hideShimmer()
                         binding.tvStatus.text = state.message
                         binding.tvStatus.isVisible = true
                         binding.tvStatus.startAnimation(AnimationUtils.loadAnimation(this@MainActivity, R.anim.fade_in))
