@@ -149,4 +149,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun resetDownload() {
         _downloadState.value = DownloadState.Idle
     }
+
+    fun currentTracks(): List<Track> = allTracks.toList()
 }

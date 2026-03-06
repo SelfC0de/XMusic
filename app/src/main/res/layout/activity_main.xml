@@ -132,10 +132,10 @@
                     android:gravity="center"
                     android:text="Поиск"
                     android:textColor="#FFFFFF"
-                    android:textSize="13sp"
+                    android:textSize="12sp"
                     android:textStyle="bold"
                     android:background="@drawable/bg_tab_selector"
-                    android:layout_marginEnd="4dp"/>
+                    android:layout_marginEnd="3dp"/>
 
                 <TextView
                     android:id="@+id/tabDownloaded"
@@ -143,11 +143,23 @@
                     android:layout_height="32dp"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="Скачанная музыка"
+                    android:text="Моя музыка"
                     android:textColor="#88FFFFFF"
-                    android:textSize="13sp"
+                    android:textSize="12sp"
                     android:background="@drawable/bg_tab_selector"
-                    android:layout_marginStart="4dp"/>
+                    android:layout_marginHorizontal="3dp"/>
+
+                <TextView
+                    android:id="@+id/tabPlaylists"
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="Плейлисты"
+                    android:textColor="#88FFFFFF"
+                    android:textSize="12sp"
+                    android:background="@drawable/bg_tab_selector"
+                    android:layout_marginStart="3dp"/>
 
             </LinearLayout>
 
@@ -195,7 +207,7 @@
                 android:paddingBottom="80dp"/>
 
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recyclerDownloaded"
+                android:id="@+id/recyclerFavorites"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
@@ -203,12 +215,57 @@
                 android:paddingBottom="80dp"
                 android:visibility="gone"/>
 
+            <LinearLayout
+                android:id="@+id/playlistSection"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Плейлисты"
+                        android:textColor="#88FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold"/>
+
+                    <TextView
+                        android:id="@+id/btnCreatePlaylist"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="+ Создать"
+                        android:textColor="#7C3AFF"
+                        android:textSize="13sp"
+                        android:padding="4dp"/>
+
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerPlaylists"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:clipToPadding="false"
+                    android:paddingBottom="80dp"/>
+
+            </LinearLayout>
+
             <TextView
-                android:id="@+id/tvEmptyDownloads"
+                android:id="@+id/tvEmptyFavorites"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:text="Нет скачанных треков"
+                android:text="Нажмите ♥ чтобы добавить трек"
                 android:textColor="@color/text_hint"
                 android:textSize="14sp"
                 android:visibility="gone"/>
@@ -542,6 +599,15 @@
                 android:gravity="center"
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="32dp">
+
+                <ImageView
+                    android:id="@+id/btnRepeat"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/ic_repeat"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:layout_marginEnd="12dp"/>
 
                 <ImageView
                     android:id="@+id/btnPrevExpanded"

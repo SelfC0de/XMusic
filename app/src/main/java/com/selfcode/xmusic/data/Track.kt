@@ -14,4 +14,7 @@ data class Track(
             append(title.trim())
             append(".mp3")
         }.replace(Regex("""[\\/:*?"<>|]"""), "")
+
+    val safeFileName: String
+        get() = url.hashCode().toUInt().toString(16) + ".mp3"
 }

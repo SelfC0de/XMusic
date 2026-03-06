@@ -9,18 +9,19 @@
     <LinearLayout
         android:id="@+id/cardRoot"
         android:layout_width="match_parent"
-        android:layout_height="72dp"
+        android:layout_height="64dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:background="@drawable/bg_track_item"
         android:paddingHorizontal="12dp">
 
         <ImageView
-            android:id="@+id/imgCover"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:id="@+id/imgPlaylistCover"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:scaleType="centerCrop"
             android:background="@drawable/bg_cover"
+            android:src="@drawable/ic_library"
             android:layout_marginEnd="12dp"/>
 
         <LinearLayout
@@ -30,7 +31,7 @@
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/tvTitle"
+                android:id="@+id/tvPlaylistName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textColor="#F0F0FF"
@@ -40,51 +41,21 @@
                 android:ellipsize="end"/>
 
             <TextView
-                android:id="@+id/tvArtist"
+                android:id="@+id/tvTrackCount"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="#88FFFFFF"
-                android:textSize="12sp"
-                android:maxLines="1"
-                android:ellipsize="end"
-                android:layout_marginTop="2dp"/>
-
-            <TextView
-                android:id="@+id/tvDuration"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
                 android:textColor="#55FFFFFF"
-                android:textSize="11sp"
+                android:textSize="12sp"
                 android:layout_marginTop="2dp"/>
 
         </LinearLayout>
 
         <ImageView
-            android:id="@+id/btnLike"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
-            android:src="@drawable/ic_heart"
+            android:id="@+id/btnDeletePlaylist"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_delete"
             android:padding="6dp"
-            android:scaleType="fitCenter"
-            android:layout_marginEnd="4dp"/>
-
-        <ImageView
-            android:id="@+id/btnPlay"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_play"
-            android:background="@drawable/bg_btn_play"
-            android:padding="8dp"
-            android:layout_marginEnd="8dp"
-            android:scaleType="fitCenter"/>
-
-        <ImageView
-            android:id="@+id/btnDownloadItem"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_download"
-            android:background="@drawable/bg_btn_download"
-            android:padding="8dp"
             android:scaleType="fitCenter"/>
 
     </LinearLayout>

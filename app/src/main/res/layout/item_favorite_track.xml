@@ -21,6 +21,7 @@
             android:layout_height="48dp"
             android:scaleType="centerCrop"
             android:background="@drawable/bg_cover"
+            android:src="@drawable/ic_music_placeholder"
             android:layout_marginEnd="12dp"/>
 
         <LinearLayout
@@ -60,11 +61,11 @@
         </LinearLayout>
 
         <ImageView
-            android:id="@+id/btnLike"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
-            android:src="@drawable/ic_heart"
-            android:padding="6dp"
+            android:id="@+id/btnAddToPlaylist"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_playlist_add"
+            android:padding="5dp"
             android:scaleType="fitCenter"
             android:layout_marginEnd="4dp"/>
 
@@ -75,16 +76,15 @@
             android:src="@drawable/ic_play"
             android:background="@drawable/bg_btn_play"
             android:padding="8dp"
-            android:layout_marginEnd="8dp"
+            android:layout_marginEnd="6dp"
             android:scaleType="fitCenter"/>
 
         <ImageView
-            android:id="@+id/btnDownloadItem"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:src="@drawable/ic_download"
-            android:background="@drawable/bg_btn_download"
-            android:padding="8dp"
+            android:id="@+id/btnRemove"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_heart_filled"
+            android:padding="5dp"
             android:scaleType="fitCenter"/>
 
     </LinearLayout>
