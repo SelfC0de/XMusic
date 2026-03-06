@@ -51,8 +51,8 @@ class FavoriteTrackAdapter(
 
         BounceEffect.apply(b.btnPlay, b.btnRemove, b.btnAddToPlaylist)
 
-        b.cardRoot.setOnClickListener { onPlay(track, holder.bindingAdapterPosition) }
-        b.btnPlay.setOnClickListener { onPlay(track, holder.bindingAdapterPosition) }
+        b.cardRoot.setOnClickListener { onPlay(track, holder.adapterPosition) }
+        b.btnPlay.setOnClickListener { onPlay(track, holder.adapterPosition) }
         b.btnRemove.setOnClickListener { onRemove(track) }
         b.btnAddToPlaylist.setOnClickListener { onAddToPlaylist(track) }
 
