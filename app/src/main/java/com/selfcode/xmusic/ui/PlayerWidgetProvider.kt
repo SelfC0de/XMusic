@@ -8,14 +8,11 @@ import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 import com.selfcode.xmusic.R
+import com.selfcode.xmusic.service.MusicService
 
 class PlayerWidgetProvider : AppWidgetProvider() {
 
     companion object {
-        const val ACTION_PLAY_PAUSE = "com.selfcode.xmusic.PLAY_PAUSE"
-        const val ACTION_PREV = "com.selfcode.xmusic.PREV"
-        const val ACTION_NEXT = "com.selfcode.xmusic.NEXT"
-
         fun updateWidget(context: Context, title: String, artist: String, isPlaying: Boolean) {
             val manager = AppWidgetManager.getInstance(context)
             val ids = manager.getAppWidgetIds(ComponentName(context, PlayerWidgetProvider::class.java))
@@ -27,9 +24,9 @@ class PlayerWidgetProvider : AppWidgetProvider() {
             views.setImageViewResource(R.id.widgetPlayPause,
                 if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
 
-            views.setOnClickPendingIntent(R.id.widgetPlayPause, getBroadcastIntent(context, ACTION_PLAY_PAUSE))
-            views.setOnClickPendingIntent(R.id.widgetPrev, getBroadcastIntent(context, ACTION_PREV))
-            views.setOnClickPendingIntent(R.id.widgetNext, getBroadcastIntent(context, ACTION_NEXT))
+            views.setOnClickPendingIntent(R.id.widgetPlayPause, getServiceIntent(context, MusicService.ACTION_PLAY_PAUSE))
+            views.setOnClickPendingIntent(R.id.widgetPrev, getServiceIntent(context, MusicService.ACTION_PREV))
+            views.setOnClickPendingIntent(R.id.widgetNext, getServiceIntent(context, MusicService.ACTION_NEXT))
 
             val openApp = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -42,9 +39,9 @@ class PlayerWidgetProvider : AppWidgetProvider() {
             }
         }
 
-        private fun getBroadcastIntent(context: Context, action: String): PendingIntent {
-            val intent = Intent(context, PlayerWidgetProvider::class.java).apply { this.action = action }
-            return PendingIntent.getBroadcast(context, action.hashCode(), intent,
+        private fun getServiceIntent(context: Context, action: String): PendingIntent {
+            val intent = Intent(context, MusicService::class.java).apply { this.action = action }
+            return PendingIntent.getService(context, action.hashCode(), intent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
     }
@@ -52,9 +49,9 @@ class PlayerWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         for (id in ids) {
             val views = RemoteViews(context.packageName, R.layout.widget_player)
-            views.setOnClickPendingIntent(R.id.widgetPlayPause, getBroadcastIntent(context, ACTION_PLAY_PAUSE))
-            views.setOnClickPendingIntent(R.id.widgetPrev, getBroadcastIntent(context, ACTION_PREV))
-            views.setOnClickPendingIntent(R.id.widgetNext, getBroadcastIntent(context, ACTION_NEXT))
+            views.setOnClickPendingIntent(R.id.widgetPlayPause, getServiceIntent(context, MusicService.ACTION_PLAY_PAUSE))
+            views.setOnClickPendingIntent(R.id.widgetPrev, getServiceIntent(context, MusicService.ACTION_PREV))
+            views.setOnClickPendingIntent(R.id.widgetNext, getServiceIntent(context, MusicService.ACTION_NEXT))
 
             val openApp = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -63,18 +60,6 @@ class PlayerWidgetProvider : AppWidgetProvider() {
                 PendingIntent.getActivity(context, 0, openApp, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
 
             manager.updateAppWidget(id, views)
-        }
-    }
-
-    override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
-        when (intent.action) {
-            ACTION_PLAY_PAUSE, ACTION_PREV, ACTION_NEXT -> {
-                val forward = Intent(intent.action).apply {
-                    setPackage(context.packageName)
-                }
-                context.sendBroadcast(forward)
-            }
         }
     }
 }

@@ -55,9 +55,10 @@ import com.selfcode.xmusic.databinding.DialogRecognitionBinding
 import com.selfcode.xmusic.data.MusicRecognizer
 import com.selfcode.xmusic.data.RecognitionResult
 import com.selfcode.xmusic.data.EqualizerManager
-import android.content.BroadcastReceiver
-import android.content.IntentFilter
 import android.content.Context
+import android.content.ServiceConnection
+import android.os.IBinder
+import com.selfcode.xmusic.service.MusicService
 import android.widget.LinearLayout
 import android.widget.TextView as AndroidTextView
 import com.selfcode.xmusic.ui.views.BounceEffect
@@ -87,22 +88,37 @@ class MainActivity : AppCompatActivity() {
     private var currentPlaylistIdx: Int = -1
     private var playlistSource: Int = 0
     private var currentOpenPlaylistId: String? = null
+    private var musicService: MusicService? = null
+    private var serviceBound = false
+    private var currentCoverBitmap: Bitmap? = null
 
-    private val widgetReceiver = object : BroadcastReceiver() {
-        override fun onReceive(ctx: Context?, intent: Intent?) {
-            when (intent?.action) {
-                PlayerWidgetProvider.ACTION_PLAY_PAUSE -> {
-                    if (isPlaying) pauseTrack() else resumeTrack()
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: android.content.ComponentName?, binder: IBinder?) {
+            val service = (binder as MusicService.MusicBinder).getService()
+            musicService = service
+            serviceBound = true
+            service.callback = object : MusicService.ServiceCallback {
+                override fun onServicePlayPause() {
+                    runOnUiThread { if (isPlaying) pauseTrack() else resumeTrack() }
                 }
-                PlayerWidgetProvider.ACTION_PREV -> {
-                    if (currentPlaylistIdx > 0) playFromPlaylist(currentPlaylistIdx - 1)
+                override fun onServicePrev() {
+                    runOnUiThread { if (currentPlaylistIdx > 0) playFromPlaylist(currentPlaylistIdx - 1) }
                 }
-                PlayerWidgetProvider.ACTION_NEXT -> {
-                    if (currentPlaylistIdx < currentPlaylist.size - 1) playFromPlaylist(currentPlaylistIdx + 1)
+                override fun onServiceNext() {
+                    runOnUiThread { if (currentPlaylistIdx < currentPlaylist.size - 1) playFromPlaylist(currentPlaylistIdx + 1) }
+                }
+                override fun onServiceStop() {
+                    runOnUiThread { pauseTrack() }
                 }
             }
         }
-    } // 0=search, 1=favorites, 2=playlist
+        override fun onServiceDisconnected(name: android.content.ComponentName?) {
+            musicService = null
+            serviceBound = false
+        }
+    }
+
+    private val dp24 by lazy { 24f * resources.displayMetrics.density } // 0=search, 1=favorites, 2=playlist
 
     private val handler = Handler(Looper.getMainLooper())
     private var userSeeking = false
@@ -179,12 +195,15 @@ class MainActivity : AppCompatActivity() {
         EqualizerManager.init(this)
         repeatMode = MusicStorage.getRepeatMode()
 
-        val filter = IntentFilter().apply {
-            addAction(PlayerWidgetProvider.ACTION_PLAY_PAUSE)
-            addAction(PlayerWidgetProvider.ACTION_PREV)
-            addAction(PlayerWidgetProvider.ACTION_NEXT)
+        val serviceIntent = Intent(this, MusicService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
         }
-        registerReceiver(widgetReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
+
+        requestNotificationPermission()
 
         vm = ViewModelProvider(this)[MainViewModel::class.java]
 
@@ -358,6 +377,7 @@ class MainActivity : AppCompatActivity() {
                 binding.visualizer.startAnimation()
                 EqualizerManager.attachToSession(mp.audioSessionId)
                 updateWidget()
+                updateServiceNotification()
             }
             setOnCompletionListener { onTrackCompleted() }
             setOnErrorListener { _, _, _ ->
@@ -404,6 +424,7 @@ class MainActivity : AppCompatActivity() {
         updatePlayPauseIcons(R.drawable.ic_play); updateAdapterPlaying(-1)
         binding.visualizer.stopAnimation()
         updateWidget()
+        updateServiceNotification()
     }
 
     private fun resumeTrack() {
@@ -411,6 +432,7 @@ class MainActivity : AppCompatActivity() {
         updatePlayPauseIcons(R.drawable.ic_pause); updateAdapterPlaying(currentPlaylistIdx)
         binding.visualizer.startAnimation()
         updateWidget()
+        updateServiceNotification()
     }
 
     private fun setupBottomSheet() {
@@ -632,7 +654,11 @@ class MainActivity : AppCompatActivity() {
             Glide.with(this).load(coverUrl).placeholder(R.drawable.ic_music_placeholder).error(R.drawable.ic_music_placeholder).centerCrop().into(binding.playerCover)
             Glide.with(this).load(coverUrl).placeholder(R.drawable.ic_music_placeholder).error(R.drawable.ic_music_placeholder).centerCrop().into(binding.expandedCover)
             Glide.with(this).asBitmap().load(coverUrl).into(object : CustomTarget<Bitmap>() {
-                override fun onResourceReady(r: Bitmap, t: Transition<in Bitmap>?) { extractAndApplyColors(r) }
+                override fun onResourceReady(r: Bitmap, t: Transition<in Bitmap>?) {
+                    currentCoverBitmap = r
+                    extractAndApplyColors(r)
+                    updateServiceNotification()
+                }
                 override fun onLoadCleared(p: Drawable?) {}
             })
         } else {
@@ -688,6 +714,27 @@ class MainActivity : AppCompatActivity() {
     private fun doSearch() {
         val q = binding.etSearch.text.toString().trim(); if (q.isEmpty()) return
         hideKeyboard(); if (currentTab != 0) switchToTab(0); vm.search(q)
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+                notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
+    private val notifPermLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ -> }
+
+    private fun updateServiceNotification() {
+        val track = if (currentPlaylistIdx in currentPlaylist.indices) currentPlaylist[currentPlaylistIdx] else null
+        musicService?.updateNotification(
+            track?.title ?: "Self Music",
+            track?.artist ?: "by SelfCode",
+            isPlaying,
+            currentCoverBitmap
+        )
     }
 
     private fun updateWidget() {
@@ -969,7 +1016,10 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         handler.removeCallbacks(seekRunnable)
         EqualizerManager.release()
-        try { unregisterReceiver(widgetReceiver) } catch (_: Exception) {}
+        if (serviceBound) {
+            try { unbindService(serviceConnection) } catch (_: Exception) {}
+            serviceBound = false
+        }
         mediaPlayer?.release()
         mediaPlayer = null
     }

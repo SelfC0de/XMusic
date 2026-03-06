@@ -11,8 +11,8 @@ android {
         applicationId = "com.selfcode.xmusic"
         minSdk = 26
         targetSdk = 34
-        versionCode = 7
-        versionName = "1.6.0"
+        versionCode = 8
+        versionName = "1.7.0"
         renderscriptTargetApi = 26
         renderscriptSupportModeEnabled = true
     }
@@ -48,6 +48,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.github.bumptech.glide:glide:4.16.0")
+    implementation("androidx.media:media:1.7.0")
     implementation("androidx.palette:palette-ktx:1.0.0")
     implementation("com.airbnb.android:lottie:6.4.0")
     implementation("com.facebook.shimmer:shimmer:0.5.0")

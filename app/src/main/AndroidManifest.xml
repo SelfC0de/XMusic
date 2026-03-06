@@ -3,6 +3,9 @@
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
 
@@ -31,14 +34,16 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.XMusic.NoActionBar"/>
 
+        <service
+            android:name=".service.MusicService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback"/>
+
         <receiver
             android:name=".ui.PlayerWidgetProvider"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
-                <action android:name="com.selfcode.xmusic.PLAY_PAUSE"/>
-                <action android:name="com.selfcode.xmusic.PREV"/>
-                <action android:name="com.selfcode.xmusic.NEXT"/>
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
