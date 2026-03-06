@@ -238,13 +238,6 @@ class MainActivity : AppCompatActivity() {
             repeatMode = (repeatMode + 1) % 3
             MusicStorage.setRepeatMode(repeatMode)
             updateRepeatIcon()
-            val msg = when (repeatMode) {
-                0 -> "Воспроизведение один раз"
-                1 -> "Повтор всех"
-                2 -> "Повтор трека"
-                else -> ""
-            }
-            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
         }
         BounceEffect.apply(binding.btnRepeat)
     }
