@@ -646,6 +646,15 @@
                     android:padding="14dp"
                     android:scaleType="fitCenter"/>
 
+                <ImageView
+                    android:id="@+id/btnEqualizer"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/ic_equalizer"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:layout_marginStart="12dp"/>
+
             </LinearLayout>
 
         </LinearLayout>

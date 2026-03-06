@@ -31,5 +31,19 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.XMusic.NoActionBar"/>
 
+        <receiver
+            android:name=".ui.PlayerWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+                <action android:name="com.selfcode.xmusic.PLAY_PAUSE"/>
+                <action android:name="com.selfcode.xmusic.PREV"/>
+                <action android:name="com.selfcode.xmusic.NEXT"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_player_info"/>
+        </receiver>
+
     </application>
 </manifest>

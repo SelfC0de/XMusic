@@ -54,6 +54,12 @@ import com.selfcode.xmusic.databinding.DialogEditPlaylistBinding
 import com.selfcode.xmusic.databinding.DialogRecognitionBinding
 import com.selfcode.xmusic.data.MusicRecognizer
 import com.selfcode.xmusic.data.RecognitionResult
+import com.selfcode.xmusic.data.EqualizerManager
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.content.Context
+import android.widget.LinearLayout
+import android.widget.TextView as AndroidTextView
 import com.selfcode.xmusic.ui.views.BounceEffect
 import com.selfcode.xmusic.utils.Downloader
 import kotlinx.coroutines.Dispatchers
@@ -80,7 +86,23 @@ class MainActivity : AppCompatActivity() {
     private var currentPlaylist: List<Track> = listOf()
     private var currentPlaylistIdx: Int = -1
     private var playlistSource: Int = 0
-    private var currentOpenPlaylistId: String? = null // 0=search, 1=favorites, 2=playlist
+    private var currentOpenPlaylistId: String? = null
+
+    private val widgetReceiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context?, intent: Intent?) {
+            when (intent?.action) {
+                PlayerWidgetProvider.ACTION_PLAY_PAUSE -> {
+                    if (isPlaying) pauseTrack() else resumeTrack()
+                }
+                PlayerWidgetProvider.ACTION_PREV -> {
+                    if (currentPlaylistIdx > 0) playFromPlaylist(currentPlaylistIdx - 1)
+                }
+                PlayerWidgetProvider.ACTION_NEXT -> {
+                    if (currentPlaylistIdx < currentPlaylist.size - 1) playFromPlaylist(currentPlaylistIdx + 1)
+                }
+            }
+        }
+    } // 0=search, 1=favorites, 2=playlist
 
     private val handler = Handler(Looper.getMainLooper())
     private var userSeeking = false
@@ -154,7 +176,15 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         MusicStorage.init(this)
+        EqualizerManager.init(this)
         repeatMode = MusicStorage.getRepeatMode()
+
+        val filter = IntentFilter().apply {
+            addAction(PlayerWidgetProvider.ACTION_PLAY_PAUSE)
+            addAction(PlayerWidgetProvider.ACTION_PREV)
+            addAction(PlayerWidgetProvider.ACTION_NEXT)
+        }
+        registerReceiver(widgetReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
 
         vm = ViewModelProvider(this)[MainViewModel::class.java]
 
@@ -238,6 +268,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnPickFolder.setOnClickListener { dirPicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)) }
         binding.btnAbout.setOnClickListener { showAbout() }
         binding.btnRecognize.setOnClickListener { requestMicAndRecognize() }
+        binding.btnEqualizer.setOnClickListener { showEqualizerDialog() }
         binding.btnCreatePlaylist.setOnClickListener { showCreatePlaylistDialog() }
 
         setupPlayerButtons(binding.btnPlayPause, binding.btnPrev, binding.btnNext)
@@ -287,7 +318,8 @@ class MainActivity : AppCompatActivity() {
             binding.btnPlayPause, binding.btnPrev, binding.btnNext,
             binding.btnPlayPauseExpanded, binding.btnPrevExpanded, binding.btnNextExpanded,
             binding.btnSearch, binding.tabSearch, binding.tabDownloaded, binding.tabPlaylists,
-            binding.btnRecognize
+            binding.btnRecognize,
+            binding.btnEqualizer
         )
     }
 
@@ -324,6 +356,8 @@ class MainActivity : AppCompatActivity() {
                 this@MainActivity.isPlaying = true
                 updatePlayPauseIcons(R.drawable.ic_pause)
                 binding.visualizer.startAnimation()
+                EqualizerManager.attachToSession(mp.audioSessionId)
+                updateWidget()
             }
             setOnCompletionListener { onTrackCompleted() }
             setOnErrorListener { _, _, _ ->
@@ -369,12 +403,14 @@ class MainActivity : AppCompatActivity() {
         mediaPlayer?.pause(); isPlaying = false
         updatePlayPauseIcons(R.drawable.ic_play); updateAdapterPlaying(-1)
         binding.visualizer.stopAnimation()
+        updateWidget()
     }
 
     private fun resumeTrack() {
         mediaPlayer?.start(); isPlaying = true
         updatePlayPauseIcons(R.drawable.ic_pause); updateAdapterPlaying(currentPlaylistIdx)
         binding.visualizer.startAnimation()
+        updateWidget()
     }
 
     private fun setupBottomSheet() {
@@ -654,6 +690,124 @@ class MainActivity : AppCompatActivity() {
         hideKeyboard(); if (currentTab != 0) switchToTab(0); vm.search(q)
     }
 
+    private fun updateWidget() {
+        val track = if (currentPlaylistIdx in currentPlaylist.indices) currentPlaylist[currentPlaylistIdx] else null
+        PlayerWidgetProvider.updateWidget(this, track?.title ?: "Self Music", track?.artist ?: "by SelfCode", isPlaying)
+    }
+
+    private fun showEqualizerDialog() {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        val db = com.selfcode.xmusic.databinding.DialogEqualizerBinding.inflate(layoutInflater)
+        dialog.setContentView(db.root)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.95).toInt(),
+            android.view.WindowManager.LayoutParams.WRAP_CONTENT
+        )
+
+        db.switchEq.isChecked = EqualizerManager.isEnabled()
+        db.seekBass.progress = EqualizerManager.getBassStrength()
+        val currentPreset = EqualizerManager.getCurrentPreset()
+
+        val chipViews = mutableListOf<AndroidTextView>()
+        EqualizerManager.presets.forEachIndexed { idx, preset ->
+            val chip = AndroidTextView(this).apply {
+                text = preset.name
+                setTextColor(if (idx == currentPreset) 0xFFFFFFFF.toInt() else 0x88FFFFFF.toInt())
+                textSize = 12f
+                background = resources.getDrawable(R.drawable.bg_eq_chip, null)
+                isSelected = idx == currentPreset
+                setPadding(32, 16, 32, 16)
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                lp.marginEnd = 8
+                layoutParams = lp
+                setOnClickListener {
+                    chipViews.forEachIndexed { i, c ->
+                        c.isSelected = i == idx
+                        c.setTextColor(if (i == idx) 0xFFFFFFFF.toInt() else 0x88FFFFFF.toInt())
+                    }
+                    EqualizerManager.applyPreset(idx)
+                    updateEqBands(db)
+                }
+            }
+            chipViews.add(chip)
+            db.presetContainer.addView(chip)
+        }
+
+        buildEqBands(db)
+
+        db.switchEq.setOnCheckedChangeListener { _, checked ->
+            EqualizerManager.applyEnabled(checked)
+        }
+
+        db.seekBass.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar?, p: Int, fromUser: Boolean) {
+                if (fromUser) EqualizerManager.applyBassStrength(p)
+            }
+            override fun onStartTrackingTouch(sb: SeekBar?) {}
+            override fun onStopTrackingTouch(sb: SeekBar?) {}
+        })
+
+        db.btnEqClose.setOnClickListener { dialog.dismiss() }
+        dialog.show()
+    }
+
+    private fun buildEqBands(db: com.selfcode.xmusic.databinding.DialogEqualizerBinding) {
+        db.bandsContainer.removeAllViews()
+        val numBands = EqualizerManager.getBandCount()
+        val range = EqualizerManager.getBandLevelRange()
+        val preset = EqualizerManager.getCurrentPreset()
+        val bands = if (preset in EqualizerManager.presets.indices) EqualizerManager.presets[preset].bands else EqualizerManager.getCustomBands()
+
+        for (i in 0 until numBands) {
+            val bandLayout = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER_HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+            }
+
+            val seekBar = android.widget.SeekBar(this).apply {
+                max = (range.second - range.first).toInt()
+                progress = ((bands.getOrElse(i) { 0 }) - range.first).toInt()
+                rotation = 270f
+                layoutParams = LinearLayout.LayoutParams(140, 0, 1f)
+                progressTintList = android.content.res.ColorStateList.valueOf(0xFF7C3AFF.toInt())
+                thumbTintList = android.content.res.ColorStateList.valueOf(0xFF7C3AFF.toInt())
+                tag = i
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(sb: SeekBar?, p: Int, fromUser: Boolean) {
+                        if (fromUser) {
+                            val level = (p + range.first).toShort()
+                            EqualizerManager.applyBandLevel(tag as Int, level)
+                        }
+                    }
+                    override fun onStartTrackingTouch(sb: SeekBar?) {}
+                    override fun onStopTrackingTouch(sb: SeekBar?) {}
+                })
+            }
+
+            val freq = EqualizerManager.getBandFreq(i)
+            val label = AndroidTextView(this).apply {
+                text = if (freq >= 1000) "${freq / 1000}k" else "${freq}"
+                setTextColor(0x55FFFFFF)
+                textSize = 10f
+                gravity = android.view.Gravity.CENTER
+            }
+
+            bandLayout.addView(seekBar)
+            bandLayout.addView(label)
+            db.bandsContainer.addView(bandLayout)
+        }
+    }
+
+    private fun updateEqBands(db: com.selfcode.xmusic.databinding.DialogEqualizerBinding) {
+        buildEqBands(db)
+    }
+
     private fun requestMicAndRecognize() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED) {
@@ -811,7 +965,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onDestroy() { super.onDestroy(); handler.removeCallbacks(seekRunnable); mediaPlayer?.release(); mediaPlayer = null }
+    override fun onDestroy() {
+        super.onDestroy()
+        handler.removeCallbacks(seekRunnable)
+        EqualizerManager.release()
+        try { unregisterReceiver(widgetReceiver) } catch (_: Exception) {}
+        mediaPlayer?.release()
+        mediaPlayer = null
+    }
     private fun hideKeyboard() { getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(binding.etSearch.windowToken, 0) }
     private fun getPathLabel(uri: Uri): String { val p = uri.lastPathSegment ?: return "Папка выбрана"; return p.replace("primary:", "").replace(":", "/").take(25) }
     private fun formatTime(ms: Int): String { val s = ms / 1000; return "%d:%02d".format(s / 60, s % 60) }

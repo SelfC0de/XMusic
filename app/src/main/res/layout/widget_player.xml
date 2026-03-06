@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/bg_mini_player"
+    android:padding="12dp"
+    android:minHeight="72dp">
+
+    <ImageView
+        android:id="@+id/widgetCover"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_music_placeholder"
+        android:layout_marginEnd="10dp"/>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widgetTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Self Music"
+            android:textColor="#F0F0FF"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"/>
+
+        <TextView
+            android:id="@+id/widgetArtist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="by SelfCode"
+            android:textColor="#88FFFFFF"
+            android:textSize="11sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:layout_marginTop="2dp"/>
+
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/widgetPrev"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:src="@drawable/ic_prev"
+        android:padding="8dp"
+        android:scaleType="fitCenter"
+        android:layout_marginEnd="4dp"/>
+
+    <ImageView
+        android:id="@+id/widgetPlayPause"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/ic_play"
+        android:background="@drawable/bg_player_btn"
+        android:padding="10dp"
+        android:scaleType="fitCenter"
+        android:layout_marginEnd="4dp"/>
+
+    <ImageView
+        android:id="@+id/widgetNext"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:src="@drawable/ic_next"
+        android:padding="8dp"
+        android:scaleType="fitCenter"/>
+
+</LinearLayout>
