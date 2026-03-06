@@ -444,6 +444,10 @@ class MainActivity : AppCompatActivity() {
         val db = DialogCreatePlaylistBinding.inflate(layoutInflater)
         dialog.setContentView(db.root)
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.9).toInt(),
+            android.view.WindowManager.LayoutParams.WRAP_CONTENT
+        )
 
         dialogCoverUri = null
         dialogCoverPreview = db.imgCoverPreview

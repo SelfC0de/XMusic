@@ -4,7 +4,8 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:background="@drawable/bg_about"
-    android:padding="24dp">
+    android:padding="24dp"
+    android:minWidth="320dp">
 
     <TextView
         android:layout_width="wrap_content"
