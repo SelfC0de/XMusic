@@ -51,6 +51,9 @@ import com.selfcode.xmusic.databinding.DialogAboutBinding
 import com.selfcode.xmusic.databinding.DialogAddToPlaylistBinding
 import com.selfcode.xmusic.databinding.DialogCreatePlaylistBinding
 import com.selfcode.xmusic.databinding.DialogEditPlaylistBinding
+import com.selfcode.xmusic.databinding.DialogRecognitionBinding
+import com.selfcode.xmusic.data.MusicRecognizer
+import com.selfcode.xmusic.data.RecognitionResult
 import com.selfcode.xmusic.ui.views.BounceEffect
 import com.selfcode.xmusic.utils.Downloader
 import kotlinx.coroutines.Dispatchers
@@ -139,6 +142,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val permLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ -> }
+
+    private val micPermLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) startRecognition()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -230,6 +237,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnLoadMore.setOnClickListener { vm.loadMore() }
         binding.btnPickFolder.setOnClickListener { dirPicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)) }
         binding.btnAbout.setOnClickListener { showAbout() }
+        binding.btnRecognize.setOnClickListener { requestMicAndRecognize() }
         binding.btnCreatePlaylist.setOnClickListener { showCreatePlaylistDialog() }
 
         setupPlayerButtons(binding.btnPlayPause, binding.btnPrev, binding.btnNext)
@@ -278,7 +286,8 @@ class MainActivity : AppCompatActivity() {
         BounceEffect.apply(
             binding.btnPlayPause, binding.btnPrev, binding.btnNext,
             binding.btnPlayPauseExpanded, binding.btnPrevExpanded, binding.btnNextExpanded,
-            binding.btnSearch, binding.tabSearch, binding.tabDownloaded, binding.tabPlaylists
+            binding.btnSearch, binding.tabSearch, binding.tabDownloaded, binding.tabPlaylists,
+            binding.btnRecognize
         )
     }
 
@@ -643,6 +652,111 @@ class MainActivity : AppCompatActivity() {
     private fun doSearch() {
         val q = binding.etSearch.text.toString().trim(); if (q.isEmpty()) return
         hideKeyboard(); if (currentTab != 0) switchToTab(0); vm.search(q)
+    }
+
+    private fun requestMicAndRecognize() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED) {
+            micPermLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            return
+        }
+        startRecognition()
+    }
+
+    private fun startRecognition() {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setCancelable(false)
+        val db = DialogRecognitionBinding.inflate(layoutInflater)
+        dialog.setContentView(db.root)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.9).toInt(),
+            android.view.WindowManager.LayoutParams.WRAP_CONTENT
+        )
+
+        db.recVisualizer.setColors(0xFF7C3AFF.toInt(), 0xFFC850C0.toInt())
+        db.recVisualizer.startAnimation()
+        db.tvRecTitle.text = "Распознавание..."
+        db.tvRecStatus.text = "Слушаю музыку..."
+
+        db.btnRecClose.setOnClickListener {
+            MusicRecognizer.cancelRecording()
+            dialog.dismiss()
+        }
+
+        dialog.show()
+
+        lifecycleScope.launch {
+            db.tvRecStatus.text = "Записываю 7 сек..."
+
+            val result = MusicRecognizer.recognize(cacheDir)
+
+            db.recVisualizer.stopAnimation()
+
+            result.onSuccess { rec ->
+                if (rec == null) {
+                    db.tvRecTitle.text = "Не удалось распознать"
+                    db.tvRecStatus.text = "Попробуйте ещё раз ближе к источнику звука"
+                    db.recVisualizer.visibility = View.GONE
+                    db.btnRecClose.text = "Закрыть"
+                    db.btnRecClose.setOnClickListener { dialog.dismiss() }
+                } else {
+                    showRecognitionResult(dialog, db, rec)
+                }
+            }
+
+            result.onFailure { e ->
+                db.tvRecTitle.text = "Ошибка"
+                db.tvRecStatus.text = e.message ?: "Неизвестная ошибка"
+                db.recVisualizer.visibility = View.GONE
+                db.btnRecClose.text = "Закрыть"
+                db.btnRecClose.setOnClickListener { dialog.dismiss() }
+            }
+        }
+    }
+
+    private fun showRecognitionResult(dialog: Dialog, db: DialogRecognitionBinding, rec: RecognitionResult) {
+        db.tvRecTitle.text = rec.title
+        db.tvRecStatus.visibility = View.GONE
+        db.recVisualizer.visibility = View.GONE
+
+        db.tvRecArtist.text = rec.artist
+        db.tvRecArtist.visibility = View.VISIBLE
+
+        if (rec.album.isNotEmpty()) {
+            db.tvRecAlbum.text = rec.album
+            db.tvRecAlbum.visibility = View.VISIBLE
+        }
+
+        if (rec.coverUrl.isNotEmpty()) {
+            db.imgRecCover.visibility = View.VISIBLE
+            Glide.with(this).load(rec.coverUrl)
+                .placeholder(R.drawable.ic_music_placeholder)
+                .error(R.drawable.ic_music_placeholder)
+                .centerCrop().into(db.imgRecCover)
+        }
+
+        db.recActions.visibility = View.VISIBLE
+
+        db.btnRecSearch.setOnClickListener {
+            dialog.dismiss()
+            binding.etSearch.setText("${rec.artist} ${rec.title}")
+            if (currentTab != 0) switchToTab(0)
+            doSearch()
+        }
+
+        db.btnRecLike.setOnClickListener {
+            dialog.dismiss()
+            binding.etSearch.setText("${rec.artist} ${rec.title}")
+            if (currentTab != 0) switchToTab(0)
+            doSearch()
+            Toast.makeText(this, "Ищу «${rec.title}» для добавления", Toast.LENGTH_SHORT).show()
+        }
+
+        db.btnRecClose.text = "Закрыть"
+        db.btnRecClose.setOnClickListener { dialog.dismiss() }
+        dialog.setCancelable(true)
     }
 
     private fun showAbout() {
