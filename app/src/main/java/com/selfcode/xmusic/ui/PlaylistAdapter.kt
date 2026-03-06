@@ -4,14 +4,17 @@ import android.net.Uri
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.view.animation.OvershootInterpolator
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import com.selfcode.xmusic.R
 import com.selfcode.xmusic.data.MusicStorage
 import com.selfcode.xmusic.databinding.ItemPlaylistBinding
+import com.selfcode.xmusic.ui.views.BounceEffect
 import java.io.File
 
 class PlaylistAdapter(
     private val onClick: (MusicStorage.Playlist) -> Unit,
+    private val onEdit: ((MusicStorage.Playlist) -> Unit)? = null,
     private val onDelete: (MusicStorage.Playlist) -> Unit
 ) : RecyclerView.Adapter<PlaylistAdapter.VH>() {
 
@@ -39,7 +42,12 @@ class PlaylistAdapter(
         }
 
         b.cardRoot.setOnClickListener { onClick(pl) }
+
+        b.btnEditPlaylist.isVisible = onEdit != null
+        b.btnEditPlaylist.setOnClickListener { onEdit?.invoke(pl) }
         b.btnDeletePlaylist.setOnClickListener { onDelete(pl) }
+
+        BounceEffect.apply(b.btnEditPlaylist, b.btnDeletePlaylist)
 
         b.root.alpha = 0f
         b.root.translationY = 20f

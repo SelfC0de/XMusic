@@ -50,6 +50,7 @@ import com.selfcode.xmusic.databinding.ActivityMainBinding
 import com.selfcode.xmusic.databinding.DialogAboutBinding
 import com.selfcode.xmusic.databinding.DialogAddToPlaylistBinding
 import com.selfcode.xmusic.databinding.DialogCreatePlaylistBinding
+import com.selfcode.xmusic.databinding.DialogEditPlaylistBinding
 import com.selfcode.xmusic.ui.views.BounceEffect
 import com.selfcode.xmusic.utils.Downloader
 import kotlinx.coroutines.Dispatchers
@@ -75,7 +76,8 @@ class MainActivity : AppCompatActivity() {
 
     private var currentPlaylist: List<Track> = listOf()
     private var currentPlaylistIdx: Int = -1
-    private var playlistSource: Int = 0 // 0=search, 1=favorites, 2=playlist
+    private var playlistSource: Int = 0
+    private var currentOpenPlaylistId: String? = null // 0=search, 1=favorites, 2=playlist
 
     private val handler = Handler(Looper.getMainLooper())
     private var userSeeking = false
@@ -173,19 +175,29 @@ class MainActivity : AppCompatActivity() {
         favAdapter = FavoriteTrackAdapter(
             onPlay = { track, idx ->
                 currentPlaylist = favAdapter.getItems()
-                playlistSource = 1
+                playlistSource = if (currentOpenPlaylistId != null) 2 else 1
                 playFromPlaylist(idx)
             },
             onRemove = { track ->
-                MusicStorage.removeFavorite(track)
-                refreshFavorites()
-                Toast.makeText(this, "Удалено", Toast.LENGTH_SHORT).show()
+                val plId = currentOpenPlaylistId
+                if (plId != null) {
+                    MusicStorage.removeTrackFromPlaylist(plId, track)
+                    val updated = MusicStorage.getPlaylistTracks(plId)
+                    favAdapter.submit(updated)
+                    currentPlaylist = updated
+                    Toast.makeText(this, "Удалено из плейлиста", Toast.LENGTH_SHORT).show()
+                } else {
+                    MusicStorage.removeFavorite(track)
+                    refreshFavorites()
+                    Toast.makeText(this, "Удалено", Toast.LENGTH_SHORT).show()
+                }
             },
             onAddToPlaylist = { track -> showAddToPlaylistDialog(track) }
         )
 
         playlistAdapter = PlaylistAdapter(
             onClick = { pl -> openPlaylistTracks(pl) },
+            onEdit = { pl -> showEditPlaylistDialog(pl) },
             onDelete = { pl ->
                 AlertDialog.Builder(this, R.style.Theme_XMusic_Dialog)
                     .setTitle("Удалить «${pl.name}»?")
@@ -411,7 +423,7 @@ class MainActivity : AppCompatActivity() {
         binding.tvEmptyFavorites.isVisible = false
 
         when (tab) {
-            1 -> refreshFavorites()
+            1 -> { currentOpenPlaylistId = null; refreshFavorites() }
             2 -> refreshPlaylists()
         }
     }
@@ -432,6 +444,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Плейлист пуст", Toast.LENGTH_SHORT).show()
             return
         }
+        currentOpenPlaylistId = pl.id
         currentPlaylist = tracks
         playlistSource = 2
         favAdapter.submit(tracks)
@@ -473,6 +486,50 @@ class MainActivity : AppCompatActivity() {
             refreshPlaylists()
             dialog.dismiss()
             Toast.makeText(this, "Плейлист «$name» создан", Toast.LENGTH_SHORT).show()
+        }
+        dialog.show()
+    }
+
+    private fun showEditPlaylistDialog(pl: MusicStorage.Playlist) {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        val db = DialogEditPlaylistBinding.inflate(layoutInflater)
+        dialog.setContentView(db.root)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.9).toInt(),
+            android.view.WindowManager.LayoutParams.WRAP_CONTENT
+        )
+
+        db.etPlaylistName.setText(pl.name)
+        if (pl.coverPath.isNotEmpty() && File(pl.coverPath).exists()) {
+            db.imgCoverPreview.setImageURI(Uri.fromFile(File(pl.coverPath)))
+        }
+
+        dialogCoverUri = null
+        dialogCoverPreview = db.imgCoverPreview
+
+        db.btnPickCover.setOnClickListener { dialogCoverPicker.launch("image/*") }
+        db.btnCancel.setOnClickListener { dialog.dismiss() }
+        db.btnSave.setOnClickListener {
+            val name = db.etPlaylistName.text.toString().trim()
+            if (name.isEmpty()) {
+                Toast.makeText(this, "Введите название", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            MusicStorage.renamePlaylist(pl.id, name)
+            dialogCoverUri?.let { uri ->
+                val dest = File(filesDir, "cover_${pl.id}.jpg")
+                try {
+                    contentResolver.openInputStream(uri)?.use { input ->
+                        FileOutputStream(dest).use { out -> input.copyTo(out) }
+                    }
+                    MusicStorage.updatePlaylistCover(pl.id, dest.absolutePath)
+                } catch (_: Exception) {}
+            }
+            refreshPlaylists()
+            dialog.dismiss()
+            Toast.makeText(this, "Плейлист обновлён", Toast.LENGTH_SHORT).show()
         }
         dialog.show()
     }
