@@ -13,7 +13,8 @@ import com.selfcode.xmusic.ui.views.BounceEffect
 class FavoriteTrackAdapter(
     private val onPlay: (Track, Int) -> Unit,
     private val onRemove: (Track) -> Unit,
-    private val onAddToPlaylist: (Track) -> Unit
+    private val onAddToPlaylist: (Track) -> Unit,
+    private val onShare: (Track) -> Unit = {}
 ) : RecyclerView.Adapter<FavoriteTrackAdapter.VH>() {
 
     private val items = mutableListOf<Track>()
@@ -52,6 +53,7 @@ class FavoriteTrackAdapter(
         BounceEffect.apply(b.btnPlay, b.btnRemove, b.btnAddToPlaylist)
 
         b.cardRoot.setOnClickListener { onPlay(track, holder.adapterPosition) }
+        b.cardRoot.setOnLongClickListener { onShare(track); true }
         b.btnPlay.setOnClickListener { onPlay(track, holder.adapterPosition) }
         b.btnRemove.setOnClickListener { onRemove(track) }
         b.btnAddToPlaylist.setOnClickListener { onAddToPlaylist(track) }

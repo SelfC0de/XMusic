@@ -225,7 +225,8 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     Toast.makeText(this, "Удалено из Моей музыки", Toast.LENGTH_SHORT).show()
                 }
-            }
+            },
+            onShare = { track -> shareTrack(track) }
         )
 
         favAdapter = FavoriteTrackAdapter(
@@ -248,7 +249,8 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "Удалено", Toast.LENGTH_SHORT).show()
                 }
             },
-            onAddToPlaylist = { track -> showAddToPlaylistDialog(track) }
+            onAddToPlaylist = { track -> showAddToPlaylistDialog(track) },
+            onShare = { track -> shareTrack(track) }
         )
 
         playlistAdapter = PlaylistAdapter(
@@ -301,6 +303,12 @@ class MainActivity : AppCompatActivity() {
         observeViewModel()
         handler.post(seekRunnable)
         updateRepeatIcon()
+        handleDeepLink(intent)
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        handleDeepLink(intent)
     }
 
     private fun setupRepeatButton() {
@@ -714,6 +722,34 @@ class MainActivity : AppCompatActivity() {
     private fun doSearch() {
         val q = binding.etSearch.text.toString().trim(); if (q.isEmpty()) return
         hideKeyboard(); if (currentTab != 0) switchToTab(0); vm.search(q)
+    }
+
+    private fun shareTrack(track: Track) {
+        val name = "${track.artist} - ${track.title}"
+            .replace(Regex("""[\\/:*?"<>|]"""), "")
+            .replace(" ", "+")
+        val link = "smusic://track/${name}.mp3"
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, "Послушай: ${track.artist} - ${track.title}\n$link")
+        }
+        startActivity(Intent.createChooser(shareIntent, "Поделиться треком"))
+    }
+
+    private fun handleDeepLink(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (uri.scheme != "smusic" || uri.host != "track") return
+
+        val path = uri.path?.removePrefix("/")?.removeSuffix(".mp3") ?: return
+        val query = path.replace("+", " ")
+            .replace(Regex("""[\\/:*?"<>|]"""), "")
+
+        if (query.isBlank()) return
+
+        binding.etSearch.setText(query)
+        if (currentTab != 0) switchToTab(0)
+        doSearch()
+        Toast.makeText(this, "Ищу: $query", Toast.LENGTH_SHORT).show()
     }
 
     private fun requestNotificationPermission() {

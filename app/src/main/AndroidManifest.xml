@@ -30,9 +30,17 @@
 
         <activity
             android:name=".ui.MainActivity"
-            android:exported="false"
+            android:exported="true"
+            android:launchMode="singleTop"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.XMusic.NoActionBar"/>
+            android:theme="@style/Theme.XMusic.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="smusic" android:host="track"/>
+            </intent-filter>
+        </activity>
 
         <service
             android:name=".service.MusicService"

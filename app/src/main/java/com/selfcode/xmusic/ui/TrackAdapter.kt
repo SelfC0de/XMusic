@@ -14,7 +14,8 @@ import com.selfcode.xmusic.ui.views.BounceEffect
 class TrackAdapter(
     private val onDownload: (Track) -> Unit,
     private val onPlay: (Track) -> Unit,
-    private val onLike: (Track, Boolean) -> Unit
+    private val onLike: (Track, Boolean) -> Unit,
+    private val onShare: (Track) -> Unit = {}
 ) : RecyclerView.Adapter<TrackAdapter.VH>() {
 
     private val items = mutableListOf<Track>()
@@ -63,6 +64,11 @@ class TrackAdapter(
             selectedPos = position
             if (prev >= 0) notifyItemChanged(prev)
             notifyItemChanged(position)
+        }
+
+        b.cardRoot.setOnLongClickListener {
+            onShare(track)
+            true
         }
 
         BounceEffect.apply(b.btnPlay, b.btnDownloadItem, b.btnLike)
