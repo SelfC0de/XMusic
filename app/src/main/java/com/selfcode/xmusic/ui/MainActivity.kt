@@ -285,7 +285,20 @@ class MainActivity : AppCompatActivity() {
         binding.etSearch.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) { doSearch(); true } else false
         }
-        binding.btnLoadMore.setOnClickListener { vm.loadMore() }
+        binding.recycler.addOnScrollListener(object : androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
+            override fun onScrolled(rv: androidx.recyclerview.widget.RecyclerView, dx: Int, dy: Int) {
+                if (dy <= 0) return
+                val lm = rv.layoutManager as? LinearLayoutManager ?: return
+                val total = lm.itemCount
+                val lastVisible = lm.findLastVisibleItemPosition()
+                if (lastVisible >= total - 5 && binding.btnLoadMore.tag == true) {
+                    val state = vm.searchState.value
+                    if (state is SearchState.Success && state.hasMore) {
+                        vm.loadMore()
+                    }
+                }
+            }
+        })
         binding.btnPickFolder.setOnClickListener { dirPicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)) }
         binding.btnAbout.setOnClickListener { showAbout() }
         binding.btnRecognize.setOnClickListener { requestMicAndRecognize() }
@@ -494,7 +507,7 @@ class MainActivity : AppCompatActivity() {
         binding.playlistSection.isVisible = tab == 2
         binding.searchRow.isVisible = tab == 0
         binding.tvCount.isVisible = tab == 0 && vm.currentTracks().isNotEmpty()
-        binding.btnLoadMore.isVisible = tab == 0 && binding.btnLoadMore.tag == true
+        binding.btnLoadMore.isVisible = false
         binding.tvEmptyFavorites.isVisible = false
 
         when (tab) {
@@ -1018,14 +1031,14 @@ class MainActivity : AppCompatActivity() {
                 when (state) {
                     is SearchState.Idle -> { binding.progressSearch.isVisible = false; binding.btnLoadMore.isVisible = false; hideShimmer() }
                     is SearchState.Loading -> { binding.progressSearch.isVisible = true; binding.btnSearch.isEnabled = false; binding.btnLoadMore.isVisible = false; binding.tvStatus.isVisible = false; showShimmer() }
-                    is SearchState.LoadingMore -> { binding.progressSearch.isVisible = true; binding.btnLoadMore.isEnabled = false; binding.btnLoadMore.text = "Загрузка..." }
+                    is SearchState.LoadingMore -> { binding.progressSearch.isVisible = true; binding.btnLoadMore.isVisible = false }
                     is SearchState.Success -> {
                         binding.progressSearch.isVisible = false; binding.btnSearch.isEnabled = true; binding.tvStatus.isVisible = false; hideShimmer()
                         adapter.submit(state.tracks)
                         binding.tvCount.text = "Найдено: ${state.tracks.size} треков"; binding.tvCount.isVisible = currentTab == 0
                         binding.tvCount.startAnimation(AnimationUtils.loadAnimation(this@MainActivity, R.anim.fade_in))
-                        binding.btnLoadMore.isVisible = state.hasMore && currentTab == 0; binding.btnLoadMore.tag = state.hasMore
-                        binding.btnLoadMore.isEnabled = true; binding.btnLoadMore.text = "Загрузить ещё"
+                        binding.btnLoadMore.isVisible = false; binding.btnLoadMore.tag = state.hasMore
+                        
                     }
                     is SearchState.Error -> {
                         binding.progressSearch.isVisible = false; binding.btnSearch.isEnabled = true; hideShimmer()

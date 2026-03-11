@@ -11,8 +11,8 @@ android {
         applicationId = "com.selfcode.xmusic"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10
-        versionName = "1.8.1"
+        versionCode = 11
+        versionName = "1.8.2"
         renderscriptTargetApi = 26
         renderscriptSupportModeEnabled = true
     }
