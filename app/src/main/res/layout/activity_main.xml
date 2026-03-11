@@ -69,8 +69,7 @@
                     android:id="@+id/btnAbout"
                     android:layout_width="32dp"
                     android:layout_height="32dp"
-                    android:src="@android:drawable/ic_menu_info_details"
-                    android:tint="#7C3AFF"
+                    android:src="@drawable/ic_settings"
                     android:padding="4dp"/>
 
             </LinearLayout>

@@ -55,8 +55,10 @@ import com.selfcode.xmusic.databinding.DialogRecognitionBinding
 import com.selfcode.xmusic.data.MusicRecognizer
 import com.selfcode.xmusic.data.RecognitionResult
 import com.selfcode.xmusic.data.EqualizerManager
+import com.selfcode.xmusic.data.UpdateChecker
 import android.content.Context
 import android.content.ServiceConnection
+import android.content.BroadcastReceiver
 import android.os.IBinder
 import com.selfcode.xmusic.service.MusicService
 import android.widget.LinearLayout
@@ -300,7 +302,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
         binding.btnPickFolder.setOnClickListener { dirPicker.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)) }
-        binding.btnAbout.setOnClickListener { showAbout() }
+        binding.btnAbout.setOnClickListener { showSettings() }
         binding.btnRecognize.setOnClickListener { requestMicAndRecognize() }
         binding.btnEqualizer.setOnClickListener { showEqualizerDialog() }
         binding.btnCreatePlaylist.setOnClickListener { showCreatePlaylistDialog() }
@@ -765,6 +767,47 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "Ищу: $query", Toast.LENGTH_SHORT).show()
     }
 
+    private fun downloadAndInstallApk(url: String, fileName: String) {
+        val dm = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+        val request = android.app.DownloadManager.Request(Uri.parse(url))
+            .setTitle("Обновление Self Music")
+            .setDescription(fileName)
+            .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, fileName)
+            .setMimeType("application/vnd.android.package-archive")
+
+        val downloadId = dm.enqueue(request)
+
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                val id = intent?.getLongExtra(android.app.DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                if (id == downloadId) {
+                    try { unregisterReceiver(this) } catch (_: Exception) {}
+                    val file = java.io.File(
+                        android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),
+                        fileName
+                    )
+                    if (file.exists()) {
+                        val apkUri = androidx.core.content.FileProvider.getUriForFile(
+                            this@MainActivity,
+                            "${packageName}.fileprovider",
+                            file
+                        )
+                        val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(apkUri, "application/vnd.android.package-archive")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(installIntent)
+                    }
+                }
+            }
+        }
+        registerReceiver(receiver, android.content.IntentFilter(android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+            Context.RECEIVER_NOT_EXPORTED)
+        Toast.makeText(this, "Скачивание обновления...", Toast.LENGTH_SHORT).show()
+    }
+
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= 33) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
@@ -1007,6 +1050,70 @@ class MainActivity : AppCompatActivity() {
         db.btnRecClose.text = "Закрыть"
         db.btnRecClose.setOnClickListener { dialog.dismiss() }
         dialog.setCancelable(true)
+    }
+
+    private fun showSettings() {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        val db = com.selfcode.xmusic.databinding.DialogSettingsBinding.inflate(layoutInflater)
+        dialog.setContentView(db.root)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.9).toInt(),
+            android.view.WindowManager.LayoutParams.WRAP_CONTENT
+        )
+
+        val currentVersion = packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
+        db.tvCurrentVersion.text = "v$currentVersion"
+
+        db.btnCheckUpdate.setOnClickListener {
+            db.btnCheckUpdate.isEnabled = false
+            db.btnCheckUpdate.text = "Проверяю..."
+            db.tvCheckStatus.visibility = View.VISIBLE
+            db.tvCheckStatus.text = "Соединение с сервером..."
+
+            lifecycleScope.launch {
+                val result = UpdateChecker.check()
+                result.onSuccess { info ->
+                    if (info == null) {
+                        db.tvUpdateStatus.text = "✓ Актуально"
+                        db.tvUpdateStatus.setTextColor(0xFF4CAF50.toInt())
+                        db.tvCheckStatus.text = "Обновлений нет"
+                        db.updateSection.visibility = View.GONE
+                    } else if (UpdateChecker.isNewer(currentVersion, info.version)) {
+                        db.tvUpdateStatus.text = "⬆ Обновление"
+                        db.tvUpdateStatus.setTextColor(0xFFFF9800.toInt())
+                        db.tvCheckStatus.visibility = View.GONE
+                        db.updateSection.visibility = View.VISIBLE
+                        db.tvNewVersion.text = "Версия ${info.version}"
+                        db.btnDownloadUpdate.setOnClickListener {
+                            if (info.downloadUrl.isNotEmpty()) {
+                                downloadAndInstallApk(info.downloadUrl, "SelfMusic-v${info.version}.apk")
+                                db.btnDownloadUpdate.isEnabled = false
+                                db.btnDownloadUpdate.text = "Скачивание..."
+                            }
+                        }
+                    } else {
+                        db.tvUpdateStatus.text = "✓ Актуально"
+                        db.tvUpdateStatus.setTextColor(0xFF4CAF50.toInt())
+                        db.tvCheckStatus.text = "У вас последняя версия"
+                    }
+                }
+                result.onFailure { e ->
+                    db.tvCheckStatus.text = "Ошибка: ${e.message}"
+                }
+                db.btnCheckUpdate.isEnabled = true
+                db.btnCheckUpdate.text = "Проверить обновления"
+            }
+        }
+
+        db.btnAboutApp.setOnClickListener {
+            dialog.dismiss()
+            showAbout()
+        }
+
+        db.btnSettingsClose.setOnClickListener { dialog.dismiss() }
+        dialog.show()
     }
 
     private fun showAbout() {
