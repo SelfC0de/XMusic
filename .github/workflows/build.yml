@@ -1,55 +1,60 @@
-name: Build APK
+name: Build & Pre-Release APK
 
 on:
-  workflow_dispatch:
-    inputs:
-      run_reason:
-        description: 'Build reason (optional)'
-        required: false
-        default: 'manual build'
+  push:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.7'
 
-      - name: Download Gradle wrapper jar
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Get version name
+        id: version
         run: |
-          mkdir -p gradle/wrapper
-          curl -sL "https://github.com/gradle/gradle/raw/v8.7.0/gradle/wrapper/gradle-wrapper.jar" \
-            -o gradle/wrapper/gradle-wrapper.jar
+          VERSION=$(grep 'versionName' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create required dirs
-        run: |
-          mkdir -p app/src/main/assets
-          mkdir -p app/src/main/jniLibs/arm64-v8a
-          mkdir -p app/src/main/jniLibs/armeabi-v7a
-          mkdir -p app/src/main/jniLibs/x86_64
+      - name: Rename APK
+        run: mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/SelfMusic-v${{ steps.version.outputs.version }}.apk
 
-      - name: Build debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Delete old pre-release
+        uses: dev-drprasad/delete-older-releases@v0.3.4
         with:
-          name: SelfMusic-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
+          keep_latest: 0
+          delete_tag_pattern: pre-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Pre-Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pre-release-v${{ steps.version.outputs.version }}
+          name: "Self Music v${{ steps.version.outputs.version }} (Pre-Release)"
+          prerelease: true
+          files: app/build/outputs/apk/debug/SelfMusic-v${{ steps.version.outputs.version }}.apk
+          body: |
+            **Self Music v${{ steps.version.outputs.version }}**
+            
+            Автоматическая сборка debug APK.
+            
+            Скачайте APK ниже для установки.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

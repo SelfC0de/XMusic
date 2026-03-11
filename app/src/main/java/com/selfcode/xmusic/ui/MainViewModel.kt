@@ -48,7 +48,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private var currentQuery = ""
     private var currentStart = 0
     private val allTracks = mutableListOf<Track>()
-    private val pageSize = 48
+    private var lastPageCount = 0
 
     private fun log(msg: String) {
         viewModelScope.launch { _logMessages.emit(msg) }
@@ -65,12 +65,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val (results, logs) = HitmotopParser.searchWithLogs(query, 0)
                 logs.forEach { log(it) }
                 allTracks.addAll(results)
-                currentStart = pageSize
-                val hasMore = results.size >= pageSize
+                lastPageCount = results.size
+                currentStart = results.size
                 _searchState.value = if (allTracks.isEmpty())
                     SearchState.Error("Ничего не найдено")
                 else
-                    SearchState.Success(allTracks.toList(), hasMore)
+                    SearchState.Success(allTracks.toList(), results.isNotEmpty())
             } catch (e: Exception) {
                 log("Exception: ${e.message}")
                 _searchState.value = SearchState.Error("Ошибка: ${e.message}")
@@ -86,8 +86,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val (results, logs) = HitmotopParser.searchWithLogs(currentQuery, currentStart)
                 logs.forEach { log(it) }
                 allTracks.addAll(results)
-                currentStart += pageSize
-                val hasMore = results.size >= pageSize
+                lastPageCount = results.size
+                currentStart += results.size
+                val hasMore = results.isNotEmpty()
                 _searchState.value = SearchState.Success(allTracks.toList(), hasMore)
             } catch (e: Exception) {
                 log("LoadMore error: ${e.message}")
